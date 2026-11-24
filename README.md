@@ -11,6 +11,30 @@ Production-grade hardware, firmware, and host sensor-fusion suite for a discrete
 
 ---
 
+## Hardware & Industrial Design Renders
+
+### 1. Chest-Worn Enclosure Concept (`52.0 × 36.0 × 10.5 mm`, `24.0 g`, IP67)
+![Chest-Worn Enclosure Concept Render](docs/plots/enclosure_concept_render.jpg)
+
+### 2. Populated 4-Layer PCBA Concept (`38.0 × 28.0 × 0.80 mm`)
+![Populated PCBA Concept Render](docs/plots/pcba_concept_render.jpg)
+
+### 3. Bare 4-Layer FR4 ENIG PCB Concept & KiCad 3D Raytraced Layout
+| Bare 4-Layer PCB Concept | KiCad 3D Raytraced Routed PCB |
+| :---: | :---: |
+| ![Bare PCB Concept Render](docs/plots/pcb_concept_render.jpg) | ![KiCad 3D Raytraced PCB](docs/plots/kicad_3d_pcb_render.png) |
+
+---
+
+## Sample Session Telemetry & Sensor Fusion Output
+| Raw Sensor Telemetry (`ICM-42688`, `ADXL372`, `MMC5983MA`, `BMP581`) | Fused Speed, Shifts, Distance & Acceleration |
+| :---: | :---: |
+| ![Raw Sensor Telemetry](docs/plots/raw_sensor_telemetry.png) | ![Fusion Metrics Timeline](docs/plots/fusion_metrics_timeline.png) |
+
+![2D Rink Trajectories](docs/plots/rink_2d_trajectories.png)
+
+---
+
 ## Repository Structure
 
 | Path | Description |
