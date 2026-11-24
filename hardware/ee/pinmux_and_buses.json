@@ -1,0 +1,365 @@
+{
+  "schema_version": "1.0.0",
+  "contract_version": "1.0.0",
+  "deployment_mode": "chest_worn_anchor_free",
+  "invariants": {
+    "uses_gps": false,
+    "uses_external_anchors": false,
+    "uses_uwb": false,
+    "system_voltage_v": 1.8,
+    "spi_high_g_isolated_from_primary_imu": true
+  },
+  "mcu": {
+    "part_number": "nRF5340-QKAA",
+    "package": "aQFN94",
+    "architecture": "Dual Arm Cortex-M33",
+    "usb_fs": true,
+    "ble_phy": "BLE 5.3 2M PHY",
+    "voltage_mode": "Normal Voltage Mode (VDD=VDDH=1.8V)",
+    "clocks": {
+      "hfxo_mhz": 32.0,
+      "hfxo_pins": {
+        "XC1": { "pin": "XC1", "ball": "C31" },
+        "XC2": { "pin": "XC2", "ball": "B30" }
+      },
+      "lfxo_hz": 32768,
+      "lfxo_tolerance_ppm": 20,
+      "timestamp_contract_tolerance_ppm": 50,
+      "lfxo_pins": {
+        "XL1": { "pin": "P0.00", "ball": "N1" },
+        "XL2": { "pin": "P0.01", "ball": "R1" }
+      }
+    },
+    "reserved_unused_nfc_pins": [
+      { "pin": "P0.02", "ball": "W1", "status": "NC (avoids UICR.NFCPINS dependency)" },
+      { "pin": "P0.03", "ball": "AA1", "status": "NC (avoids UICR.NFCPINS dependency)" }
+    ]
+  },
+  "power_rails": {
+    "VBAT": {
+      "nominal_v": 3.7,
+      "range_v": [2.8, 4.35],
+      "uvlo_mv": 3000,
+      "source": "502535 450 mAh LiPo + 10k B=3380K NTC"
+    },
+    "BUCK1_1V8": {
+      "voltage_v": 1.8,
+      "r_vset_ohms": 47000,
+      "inductor_uh": 2.2,
+      "max_current_ma": 200,
+      "efficiency": 0.9,
+      "loads": [
+        "nRF5340-QKAA",
+        "ICM-42688-P",
+        "ADXL372BCCZ-RL7",
+        "BMP581",
+        "W25N01JWZEIG",
+        "PCA9306DCUR_VREF1",
+        "SN74AXC1T45DRLR_VCCA",
+        "Q1_NTZD3154NT1G_GATES"
+      ]
+    },
+    "BUCK2_3V0": {
+      "voltage_v": 3.0,
+      "r_vset_ohms": 150000,
+      "inductor_uh": 2.2,
+      "max_current_ma": 200,
+      "efficiency": 0.9,
+      "loads": [
+        "MMC5983MA_VDD",
+        "MMC5983MA_VDDIO",
+        "PCA9306DCUR_VREF2",
+        "SN74AXC1T45DRLR_VCCB",
+        "LD1_LD2_STATUS_ANODES"
+      ],
+      "rationale": "MMC5983MA requires 2.8-3.6 V on both VDD and VDDIO (interfaced via PCA9306DCUR and SN74AXC1T45DRLR), and green/red status LEDs LD1/LD2 (Vf=2.0-2.4 V) require 3.0 V anode supply switched by low-side N-MOSFET Q1 driven from 1.8 V GPIOs."
+    }
+  },
+  "buses": {
+    "SPIM4": {
+      "protocol": "SPI",
+      "mode": "0/3",
+      "clock_hz": 16000000,
+      "voltage_v": 1.8,
+      "silicon_instance": "SPIM4",
+      "peripheral_id": 10,
+      "base_address": "0x4000A000",
+      "pins": {
+        "SCK": { "pin": "P0.08", "ball": "AH2", "drive": "H0H1" },
+        "MOSI": { "pin": "P0.09", "ball": "AJ1", "drive": "H0H1" },
+        "MISO": { "pin": "P0.10", "ball": "AK2", "drive": "Input" },
+        "CS_IMU_N": { "pin": "P0.11", "ball": "AK4", "drive": "H0H1", "pullup_ohms": 10000 }
+      },
+      "devices": [
+        {
+          "part_number": "ICM-42688-P",
+          "odr_hz": 200,
+          "accel_fs_g": 16.0,
+          "gyro_fs_dps": 2000.0
+        }
+      ],
+      "notes": "Dedicated high-speed SPIM4; cpunet default uart0 disabled in DTS so P0.10/P0.11 are free."
+    },
+    "SPIM1": {
+      "protocol": "SPI",
+      "mode": "0",
+      "clock_hz": 8000000,
+      "max_slave_clock_hz": 10000000,
+      "voltage_v": 1.8,
+      "silicon_instance": "SPIM1",
+      "peripheral_id": 9,
+      "base_address": "0x40009000",
+      "pins": {
+        "SCK": { "pin": "P0.19", "ball": "AL13", "drive": "H0H1" },
+        "MOSI": { "pin": "P0.20", "ball": "AK16", "drive": "H0H1" },
+        "MISO": { "pin": "P0.21", "ball": "AL15", "drive": "Input" },
+        "CS_HIGHG_N": { "pin": "P0.22", "ball": "AK18", "drive": "H0H1", "pullup_ohms": 10000 }
+      },
+      "devices": [
+        {
+          "part_number": "ADXL372",
+          "full_part_number": "ADXL372BCCZ-RL7",
+          "odr_hz": 3200,
+          "accel_fs_g": 200.0
+        }
+      ],
+      "notes": "Isolated from SPIM4 due to ADXL372 10 MHz max SCLK limit; cpunet default uart0 disabled in DTS."
+    },
+    "TWIM0": {
+      "protocol": "I2C",
+      "mode": "Fast Mode",
+      "clock_hz": 400000,
+      "voltage_v": 1.8,
+      "secondary_translated_voltage_v": 3.0,
+      "level_translator_ic": "PCA9306DCUR",
+      "pullup_ohms": 4700,
+      "silicon_instance": "TWIM0",
+      "peripheral_id": 8,
+      "base_address": "0x40008000",
+      "pins": {
+        "SDA": { "pin": "P1.02", "ball": "AE1", "drive": "S0D1/E0E1" },
+        "SCL": { "pin": "P1.03", "ball": "AF2", "drive": "S0D1/E0E1" }
+      },
+      "devices": [
+        {
+          "part_number": "MMC5983MA",
+          "i2c_addr_hex": "0x30",
+          "odr_hz": 50,
+          "fs_ut": 800.0,
+          "rail_v": 3.0,
+          "via_translator": "PCA9306DCUR (1.8 V <-> 3.0 V)",
+          "strapping": "SPI_CS tied to VDD_3V0"
+        },
+        {
+          "part_number": "BMP581",
+          "i2c_addr_hex": "0x47",
+          "alt_i2c_addr_hex": "0x46",
+          "odr_hz": 25,
+          "rail_v": 1.8,
+          "strapping": "SDO tied to VDD_1V8"
+        }
+      ]
+    },
+    "TWIM1": {
+      "protocol": "I2C",
+      "mode": "Fast Mode",
+      "clock_hz": 400000,
+      "voltage_v": 1.8,
+      "pullup_ohms": 4700,
+      "reg_addr_bits": 16,
+      "silicon_instance": "TWIM2",
+      "peripheral_id": 11,
+      "base_address": "0x4000B000",
+      "silicon_erratum_note": "Retains contract bus key 'TWIM1' for 1-to-1 INTERFACE_CONTRACT.json parity. On nRF5340 silicon, SPIM1 (ADXL372) and TWIM1 share Peripheral ID 9 (0x40009000) and cannot run concurrently; therefore firmware DTS routes this PMIC I2C bus to physical silicon instance TWIM2 (Peripheral ID 11, 0x4000B000) via the P0.23/P0.24 GPIO crossbar.",
+      "pins": {
+        "SDA": { "pin": "P0.23", "ball": "AK20", "drive": "S0D1" },
+        "SCL": { "pin": "P0.24", "ball": "AL27", "drive": "S0D1" }
+      },
+      "devices": [
+        {
+          "part_number": "nPM1300",
+          "full_part_number": "nPM1300-QEAA-R",
+          "i2c_addr_hex": "0x6B",
+          "jeita_ntc": true
+        }
+      ]
+    },
+    "QSPI": {
+      "protocol": "1-bit SPI NAND via SPIM3 on dedicated QSPI pins (or hybrid QSPI READOC=0x03)",
+      "clock_hz": 8000000,
+      "max_clock_hz": 8000000,
+      "voltage_v": 1.8,
+      "silicon_instance": "SPIM3",
+      "peripheral_id": 12,
+      "base_address": "0x4000C000",
+      "silicon_note": "Retains contract bus key 'QSPI' for 1-to-1 INTERFACE_CONTRACT.json parity. On nRF5340 silicon, QSPI.CINSTRCONF executes strictly on a single data line (IO0/IO1, <= 8 payload bytes) and QSPI EasyDMA READ4O/PP4O hard-codes 24-bit addresses vs W25N01JW's 16-bit column address. Furthermore, nRF5340 SPIM0..SPIM3 are hardware-capped at 8 MHz max SCLK (only SPIM4 supports higher SCLK rates). Therefore M3 firmware drives W25N01JW over the dedicated P0.13..P0.18 pins using SPIM3 (Peripheral ID 12, 0x4000C000, 8 MHz / 8 Mbps / ~1.0 MB/s wire rate 1-bit SPI NAND mode with P0.13=MOSI/SI, P0.14=MISO/SO, P0.15=/WP held 1V8, P0.16=/HOLD held 1V8, P0.17=SCK, P0.18=FLASH_CS_N), which easily sustains 8,044 B/s logging and 650 KB/s USB FS read offload and has zero ID conflict with TWIM0(8), SPIM1(9), SPIM4(10), or TWIM2(11) — or alternatively hybrid QSPI (CINSTRCONF for control + READOC=READ 0x03 1-bit 24-bit [16b CA + 8b dummy]) as an optional faster read alternative.",
+      "pins": {
+        "IO0": { "pin": "P0.13", "ball": "AL5", "drive": "H0H1", "spim3_role": "MOSI / SI" },
+        "IO1": { "pin": "P0.14", "ball": "AK8", "drive": "H0H1", "spim3_role": "MISO / SO" },
+        "IO2": { "pin": "P0.15", "ball": "AK10", "drive": "H0H1", "spim3_role": "/WP (driven HIGH 1V8 in 1-bit SPI)" },
+        "IO3": { "pin": "P0.16", "ball": "AL9", "drive": "H0H1", "spim3_role": "/HOLD (driven HIGH 1V8 in 1-bit SPI)" },
+        "SCK": { "pin": "P0.17", "ball": "AK12", "drive": "H0H1", "spim3_role": "SCK" },
+        "FLASH_CS_N": { "pin": "P0.18", "ball": "AK14", "drive": "H0H1", "pullup_ohms": 10000, "spim3_role": "CS_N" }
+      },
+      "devices": [
+        {
+          "part_number": "W25N01JW",
+          "full_part_number": "W25N01JWZEIG",
+          "capacity_mb": 128,
+          "page_bytes": 2048,
+          "block_bytes": 131072,
+          "usable_ring_blocks": 998
+        }
+      ]
+    },
+    "USBD": {
+      "protocol": "USB 2.0 Full-Speed CDC-ACM",
+      "bitrate_bps": 12000000,
+      "connector_part": "GCT USB4720-03-A",
+      "cc_pulldown_ohms": 5100,
+      "esd_ic": "TPD4E05U06DQAR",
+      "vbus_tvs": "ESD5Z5.0T1G",
+      "pins": {
+        "D_P": { "pin": "D+", "ball": "B2" },
+        "D_N": { "pin": "D-", "ball": "B4" },
+        "VBUS": { "pin": "VBUS", "ball": "A5" },
+        "DECUSB": { "pin": "DECUSB", "ball": "B6", "cap_uf": 4.7 }
+      }
+    },
+    "BLE": {
+      "protocol": "BLE 5.3 2M PHY",
+      "freq_ghz": 2.4,
+      "antenna_part": "2450AT18B0100001E",
+      "matching_topology": "Tee (1.2 pF series, 2.7 nH shunt, 3.3 nH series)",
+      "keepout_mm": [8.0, 8.0],
+      "pins": {
+        "ANT": { "pin": "ANT", "ball": "L31" }
+      }
+    }
+  },
+  "gpio_signals": {
+    "IMU_INT1": {
+      "pin": "P0.04",
+      "ball": "V2",
+      "direction": "input",
+      "active": "rising",
+      "max_freq_hz": 200,
+      "near_radio": false,
+      "function": "ICM-42688-P INT1 FIFO watermark (20 samples @ 10 Hz)"
+    },
+    "IMU_INT2": {
+      "pin": "P0.05",
+      "ball": "Y2",
+      "direction": "input",
+      "active": "rising",
+      "max_freq_hz": 200,
+      "near_radio": false,
+      "function": "ICM-42688-P INT2 DRDY / Wake-on-Motion"
+    },
+    "ADXL_INT1": {
+      "pin": "P0.06",
+      "ball": "AB2",
+      "direction": "input",
+      "active": "rising",
+      "max_freq_hz": 100,
+      "near_radio": false,
+      "function": "ADXL372 INT1 Instant-On impact wake (>12 g)"
+    },
+    "ADXL_INT2": {
+      "pin": "P0.07",
+      "ball": "AD2",
+      "direction": "input",
+      "active": "rising",
+      "max_freq_hz": 50,
+      "near_radio": false,
+      "function": "ADXL372 INT2 FIFO watermark"
+    },
+    "MAG_INT": {
+      "pin": "P1.01",
+      "ball": "P2",
+      "direction": "input",
+      "active": "rising",
+      "max_freq_hz": 50,
+      "near_radio": true,
+      "drive": "S0S1",
+      "level_translator": "SN74AXC1T45DRLR (3.0 V -> 1.8 V)",
+      "function": "MMC5983MA INT DRDY (50 Hz <= 10 kHz near-radio limit)"
+    },
+    "BARO_INT": {
+      "pin": "P1.04",
+      "ball": "AL19",
+      "direction": "input",
+      "active": "rising",
+      "max_freq_hz": 25,
+      "near_radio": true,
+      "drive": "S0S1",
+      "function": "BMP581 INT DRDY/FIFO (25 Hz <= 10 kHz near-radio limit)"
+    },
+    "PMIC_INT": {
+      "pin": "P1.05",
+      "ball": "AK22",
+      "direction": "input",
+      "active": "falling",
+      "max_freq_hz": 10,
+      "near_radio": true,
+      "drive": "S0S1",
+      "function": "nPM1300 GPIO0 event/fault IRQ (<= 10 kHz near-radio limit)"
+    },
+    "BTN_USER_N": {
+      "pin": "P1.06",
+      "ball": "AL21",
+      "direction": "input",
+      "active": "falling",
+      "max_freq_hz": 10,
+      "near_radio": true,
+      "drive": "S0S1",
+      "isolation_diode": "D2 BAT54WS (cathode to SW1/SHPHLD, anode to P1.06 with 100 kOhm pull-up to 1.8 V)",
+      "function": "Active-low 1.8 V push-button input from SW1 via passive Schottky isolation diode D2 (BAT54WS) + 100 kOhm 1.8 V pull-up (VBAT reverse-biases D2 when SW1 open; Vf~0.20 V @ 16 uA << VIL_max=0.54 V when pressed; <= 10 kHz)"
+    },
+    "LED_STATUS_G": {
+      "pin": "P1.07",
+      "ball": "AK24",
+      "direction": "output",
+      "active": "high",
+      "max_freq_hz": 10,
+      "near_radio": true,
+      "drive": "S0S1",
+      "function": "Drives Q1A (NTZD3154NT1G) low-side N-MOSFET gate switching LD1 green LED on BUCK2 3.0 V via 1 kOhm (<= 10 kHz, 1.8 V GPIO safe)"
+    },
+    "LED_STATUS_R": {
+      "pin": "P1.08",
+      "ball": "AL23",
+      "direction": "output",
+      "active": "high",
+      "max_freq_hz": 10,
+      "near_radio": true,
+      "drive": "S0S1",
+      "function": "Drives Q1B (NTZD3154NT1G) low-side N-MOSFET gate switching LD2 red/amber LED on BUCK2 3.0 V via 1 kOhm (<= 10 kHz, 1.8 V GPIO safe)"
+    }
+  },
+  "pmic_dedicated_signals": {
+    "SHPHLD": "SW1 (EVPAWCD4A) tactile switch -> nPM1300 SHPHLD (VBAT-pulled) and D2 (BAT54WS) cathode; D2 anode -> P1.06 BTN_USER_N with 100 kOhm pull-up to 1.8 V (VBAT reverse-biases D2 when open; SW1 press pulls SHPHLD & P1.06 low; SHPHLD press/release events also fire via nPM1300 GPIO0 GPOIRQ -> P1.05 PMIC_INT + TWIM2 EVENTSSHPHLD)",
+    "GPIO1": "Spare / unconnected (nPM1300 GPIOMODE[n] has no SHPHLD mirror mode)",
+    "NTC": "502535 integrated 10 kOhm (B=3380 K) NTC -> nPM1300 NTC pin (JEITA 0-45 degC; PCB RT1 DNI)",
+    "VBUS": "GCT USB4720-03-A VBUS -> D1 TVS -> C_VBUS (4.7 uF 25 V 0603) -> nPM1300 VBUSIN + nRF5340 VBUS (A5)"
+  },
+  "debug_interface": {
+    "protocol": "SWD",
+    "connector": "Tag-Connect TC2050-IDC-NL (pad footprint only)",
+    "voltage_v": 1.8,
+    "pins": {
+      "SWDIO": { "pin": "SWDIO", "ball": "AA31" },
+      "SWDCLK": { "pin": "SWDCLK", "ball": "W31" },
+      "NRESET": { "pin": "NRESET", "ball": "AC31" }
+    }
+  },
+  "sensor_alignment": {
+    "pcb_frame_id": "S",
+    "canonical_R_BS": [
+      [0.0, 0.0, 1.0],
+      [0.0, -1.0, 0.0],
+      [1.0, 0.0, 0.0]
+    ],
+    "aligned_sensors": ["ICM-42688-P", "ADXL372", "MMC5983MA"]
+  }
+}

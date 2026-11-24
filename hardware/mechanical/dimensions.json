@@ -1,0 +1,159 @@
+{
+  "schema_version": "1.0.0",
+  "contract_version": "1.0.0",
+  "contract_ref": "../../INTERFACE_CONTRACT.json",
+  "deployment_mode": "chest_worn_anchor_free",
+  "envelope_mm": {
+    "length_mm": 52.0,
+    "width_mm": 36.0,
+    "thickness_mm": 10.5,
+    "max_allowed_length_mm": 55.0,
+    "max_allowed_width_mm": 40.0,
+    "max_allowed_thickness_mm": 12.0,
+    "corner_fillet_r_mm": 3.0,
+    "chest_bevel_r_mm": 2.0,
+    "tolerance_mm": 0.15
+  },
+  "mass_budget_g": {
+    "target_pod_mass_g": 24.0,
+    "max_pod_mass_g": 28.0,
+    "max_contract_mass_g": 40.0,
+    "optional_strap_mass_g": 14.5,
+    "breakdown_g": {
+      "battery_lipo_502535": 9.2,
+      "pcb_and_ee": 3.8,
+      "inner_shell_pc_abs": 4.2,
+      "overmold_tpu_70a": 4.6,
+      "perimeter_oring": 0.4,
+      "tethered_usbc_cap": 0.6,
+      "eptfe_gore_vent": 0.1,
+      "fasteners_pad_dome": 1.1
+    }
+  },
+  "tolerance_stackup_z_mm": {
+    "layers": [
+      {
+        "name": "front_tpu_overmold",
+        "nominal_mm": 0.8,
+        "plus_tol_mm": 0.1,
+        "minus_tol_mm": 0.1
+      },
+      {
+        "name": "front_pc_abs_wall",
+        "nominal_mm": 0.85,
+        "plus_tol_mm": 0.08,
+        "minus_tol_mm": 0.08
+      },
+      {
+        "name": "front_ic_clearance",
+        "nominal_mm": 1.25,
+        "plus_tol_mm": 0.1,
+        "minus_tol_mm": 0.1
+      },
+      {
+        "name": "pcb_fr4_4layer",
+        "nominal_mm": 0.8,
+        "plus_tol_mm": 0.08,
+        "minus_tol_mm": 0.08
+      },
+      {
+        "name": "poron_isolation_pad",
+        "nominal_mm": 0.35,
+        "plus_tol_mm": 0.05,
+        "minus_tol_mm": 0.05
+      },
+      {
+        "name": "battery_502535_lipo",
+        "nominal_mm": 5.0,
+        "plus_tol_mm": 0.4,
+        "minus_tol_mm": 0.3
+      },
+      {
+        "name": "rear_pc_abs_wall",
+        "nominal_mm": 0.75,
+        "plus_tol_mm": 0.08,
+        "minus_tol_mm": 0.08
+      },
+      {
+        "name": "rear_tpu_overmold",
+        "nominal_mm": 0.7,
+        "plus_tol_mm": 0.1,
+        "minus_tol_mm": 0.1
+      }
+    ],
+    "nominal_total_mm": 10.5,
+    "rss_max_mm": 10.96,
+    "worst_case_max_mm": 11.49
+  },
+  "battery_compartment_mm": {
+    "form_factor": "502535",
+    "cell_nominal_mm": [35.0, 25.0, 5.0],
+    "cell_max_swollen_mm": [37.0, 25.5, 5.4],
+    "cavity_inner_mm": [38.5, 26.5, 5.6]
+  },
+  "environmental_and_impact": {
+    "ip_rating": "IP67",
+    "immersion_depth_m": 1.0,
+    "immersion_duration_min": 30,
+    "impact_survivability_g": 200.0,
+    "operating_temp_c": [-10.0, 50.0],
+    "charge_temp_c": [0.0, 45.0],
+    "materials": {
+      "inner_shell": "PC+ABS",
+      "overmold": "TPU Shore 70A",
+      "sealing": "Ultrasonic/laser perimeter weld + silicone O-ring + tethered TPU USB-C plug"
+    },
+    "barometer_vent": {
+      "sensor": "BMP581",
+      "membrane_material": "ePTFE hydrophobic/oleophobic (Gore/Donaldson)",
+      "port_diameter_mm": 2.5,
+      "ip_rating": "IP67"
+    },
+    "usb_c_port": {
+      "part_number": "GCT USB4720-03-A",
+      "ip_rating": "IP67",
+      "cover": "Captive Shore 70A TPU tethered plug"
+    }
+  },
+  "coordinate_frame_markings": {
+    "sensor_frame": "S",
+    "body_frame": "B",
+    "R_BS": [
+      [0.0, 0.0, 1.0],
+      [0.0, -1.0, 0.0],
+      [1.0, 0.0, 0.0]
+    ],
+    "orthogonality_det": 1,
+    "markings": {
+      "+X_S": "TOP / UP arrow toward player head (+Z_B) along 52.0 mm axis",
+      "+Y_S": "Player right (-Y_B) along 36.0 mm axis",
+      "+Z_S": "FRONT / OUTWARD away from sternum (+X_B) along 10.5 mm axis",
+      "-Z_S": "CHEST SIDE facing sternum (-X_B) on R2.0 beveled rear face"
+    }
+  },
+  "retention_options": {
+    "modes": ["STERNUM_POCKET", "CHEST_STRAP"],
+    "chest_strap_width_mm": 25.0,
+    "exposed_metal_fasteners": false
+  },
+  "internal_subassemblies_mm": {
+    "pcb": {
+      "length_mm": 38.0,
+      "width_mm": 28.0,
+      "thickness_mm": 0.8,
+      "layers": 4,
+      "finish": "ENIG"
+    },
+    "battery_502535": {
+      "length_mm": 35.0,
+      "width_mm": 25.0,
+      "thickness_mm": 5.0
+    },
+    "rf_keepout_2450mhz": {
+      "length_mm": 8.0,
+      "width_mm": 8.0,
+      "layers_voided": [1, 2, 3, 4],
+      "notes": "Zero copper/ground pour under 2450AT18B0100001E"
+    }
+  }
+}

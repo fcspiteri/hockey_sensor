@@ -1,0 +1,1549 @@
+{
+  "contract_version": "1.0.0",
+  "schema_standard": "https://json-schema.org/draft/2020-12/schema",
+  "project": "hockey_sensor",
+  "constants": {
+    "gravity_mps2": 9.80665,
+    "crc32_polynomial_reflected": "0xEDB88320",
+    "crc32_init": "0xFFFFFFFF",
+    "crc32_xorout": "0xFFFFFFFF",
+    "sync_marker_u16": "0xAA55",
+    "response_sync_marker_u16": "0x55AA",
+    "session_magic": "HKS1",
+    "timestamp_width_bits": 64,
+    "timestamp_type": "uint64_t",
+    "gps_enabled": false,
+    "external_anchors_enabled": false
+  },
+  "coordinate_frames": {
+    "handedness": "right-handed",
+    "quaternion_convention": {
+      "name": "q_WB",
+      "standard": "Hamilton",
+      "order": "scalar-first",
+      "components": ["qw", "qx", "qy", "qz"],
+      "direction": "active_body_to_world",
+      "unit_norm_tolerance": 1e-6
+    },
+    "frames": {
+      "W": {
+        "id": "W",
+        "name": "Rink World Frame",
+        "origin": "Center-ice faceoff dot on the ice surface (z = 0)",
+        "axes": {
+          "+X": "Toward attacking goal along rink longitudinal centerline",
+          "+Y": "Toward left boards when facing +X",
+          "+Z": "Vertically upward normal to ice surface (+X cross +Y = +Z)"
+        },
+        "gravity_vector_mps2": [0.0, 0.0, -9.80665]
+      },
+      "B": {
+        "id": "B",
+        "name": "Player Body / Torso Frame (FLU)",
+        "origin": "Geometric center of sternum pod",
+        "axes": {
+          "+X": "Forward out of sternum",
+          "+Y": "Player left",
+          "+Z": "Upward along spine toward head (+X cross +Y = +Z)"
+        },
+        "identity_quaternion_q_WB": [1.0, 0.0, 0.0, 0.0]
+      },
+      "S": {
+        "id": "S",
+        "name": "Sensor Chip Frame (Canonical Vertical Sternum PCB)",
+        "origin": "Primary IMU accelerometer/gyroscope proof-mass center",
+        "axes": {
+          "+X": "Up along vertical sternum PCB (+Z_B)",
+          "+Y": "Toward player right (-Y_B)",
+          "+Z": "Outward normal to PCB away from chest (+X_B, +X cross +Y = +Z)"
+        },
+        "mapping_to_B": "R_BS",
+        "canonical_R_BS": [
+          [0.0, 0.0, 1.0],
+          [0.0, -1.0, 0.0],
+          [1.0, 0.0, 0.0]
+        ],
+        "orthogonality_det": 1
+      }
+    }
+  },
+  "units_and_tolerances": {
+    "gps_or_anchors_used": false,
+    "position": {
+      "unit": "m",
+      "wire_type": "none (post-session computed)",
+      "analytics_type": "float64",
+      "operating_range": [-35.0, 35.0],
+      "tolerance": "2.5-6.0 m CEP50 per 45 s shift with bench-gate + RTS (>10-25 m unbounded without bench/wall resets)"
+    },
+    "velocity": {
+      "unit": "m/s",
+      "wire_type": "none (post-session computed)",
+      "analytics_type": "float64",
+      "operating_range": [-25.0, 25.0],
+      "tolerance": "+/- 0.4 m/s nominal RMSE (+/- 0.6-0.8 m/s worst-case)"
+    },
+    "acceleration": {
+      "unit": "m/s^2",
+      "wire_type": "int16",
+      "analytics_type": "float64",
+      "operating_range": [-2008.40192, 2008.40192],
+      "tolerance": "0.0047884033203125 (m/s^2)/LSB primary (+/-16g, +/-1% FS); 0.980665 (m/s^2)/LSB high-g (+/-200g nominal, [-2048,+2047] = [-2008.40,+2007.42] m/s^2, +/-2% FS sensor; -10% to -25% chest-pad damping)"
+    },
+    "angular_velocity": {
+      "unit": "rad/s",
+      "wire_type": "int16",
+      "analytics_type": "float64",
+      "operating_range": [-34.906585, 34.906585],
+      "tolerance": "0.001064225153655079 (rad/s)/LSB (+/-2000 dps, bias <= 0.005 rad/s)"
+    },
+    "magnetic_flux": {
+      "unit": "uT",
+      "wire_type": "int32",
+      "analytics_type": "float64",
+      "operating_range": [-800.0, 800.0],
+      "tolerance": "0.006103515625 uT/LSB (100/16384 uT/LSB, 18-bit centered)"
+    },
+    "pressure": {
+      "unit": "Pa",
+      "wire_type": "uint32 (1/64 Pa/LSB)",
+      "analytics_type": "float64",
+      "operating_range": [30000.0, 125000.0],
+      "tolerance": "0.015625 Pa/LSB (+/- 3.0 Pa relative, < 0.1 Pa RMS noise)"
+    },
+    "temperature": {
+      "unit": "degC",
+      "wire_type": "int16 (0.01 degC/LSB)",
+      "analytics_type": "float64",
+      "operating_range": [-40.0, 85.0],
+      "tolerance": "+/- 0.5 degC"
+    },
+    "battery_voltage": {
+      "unit": "mV",
+      "wire_type": "uint16",
+      "analytics_type": "uint16",
+      "operating_range": [2800.0, 4350.0],
+      "tolerance": "+/- 10 mV"
+    },
+    "timestamp": {
+      "unit": "us",
+      "wire_type": "uint64_t",
+      "analytics_type": "float64 (seconds)",
+      "operating_range": [0.0, 1.8446744073709552e19],
+      "tolerance": "+/- 50 ppm (<= 0.36 s over 2 hours)"
+    },
+    "distance": {
+      "unit": "m",
+      "wire_type": "none (post-session computed)",
+      "analytics_type": "float64",
+      "operating_range": [0.0, 50000.0],
+      "tolerance": "+/- 5% calibrated (+/- 8-12% uncalibrated per session)"
+    },
+    "shift_duration": {
+      "unit": "s",
+      "wire_type": "none (post-session computed)",
+      "analytics_type": "float64",
+      "operating_range": [0.0, 14400.0],
+      "tolerance": "+/- 1.5 s nominal (+/- 2.0-3.0 s worst-case)"
+    }
+  },
+  "hardware_abstraction": {
+    "deployment_mode": "chest_worn_anchor_free",
+    "uses_gps": false,
+    "uses_external_anchors": false,
+    "system_voltage_v": 1.8,
+    "min_battery_life_hours": 2.0,
+    "enclosure_envelope_mm": {
+      "length_mm": 52.0,
+      "width_mm": 36.0,
+      "thickness_mm": 10.5,
+      "mass_g": 24.0,
+      "ip_rating": "IP67"
+    },
+    "mcu": {
+      "part_number": "nRF5340-QKAA",
+      "architecture": "Dual Arm Cortex-M33",
+      "usb_fs": true,
+      "ble_phy": "BLE 5.3 2M PHY"
+    },
+    "pmic": {
+      "part_number": "nPM1300",
+      "bus": "TWIM1",
+      "i2c_addr_hex": "0x6B",
+      "jeita_ntc": true
+    },
+    "battery": {
+      "form_factor": "502535",
+      "chemistry": "LiPo",
+      "nominal_v": 3.7,
+      "capacity_mah": 450.0
+    },
+    "flash": {
+      "part_number": "W25N01JW",
+      "capacity_mb": 128,
+      "bus": "QSPI",
+      "page_bytes": 2048,
+      "block_bytes": 131072,
+      "usable_ring_blocks": 998
+    },
+    "sensors": {
+      "primary_imu": {
+        "part_number": "ICM-42688-P",
+        "bus": "SPIM4",
+        "odr_hz": 200,
+        "accel_fs_g": 16.0,
+        "gyro_fs_dps": 2000.0
+      },
+      "high_g_imu": {
+        "part_number": "ADXL372",
+        "bus": "SPIM1",
+        "odr_hz": 3200,
+        "accel_fs_g": 200.0
+      },
+      "magnetometer": {
+        "part_number": "MMC5983MA",
+        "bus": "TWIM0",
+        "i2c_addr_hex": "0x30",
+        "odr_hz": 50,
+        "fs_ut": 800.0
+      },
+      "barometer": {
+        "part_number": "BMP581",
+        "bus": "TWIM0",
+        "i2c_addr_hex": "0x47",
+        "odr_hz": 25
+      }
+    },
+    "buses": {
+      "SPIM4": "16 MHz SPI Mode 0/3, 1.8 V (ICM-42688-P, CS_IMU_N)",
+      "SPIM1": "8 MHz SPI Mode 0, 1.8 V isolated <=10 MHz max (ADXL372, CS_HIGHG_N)",
+      "TWIM0": "400 kHz I2C0 Fast Mode, 1.8 V (MMC5983MA 0x30, BMP581 0x47 [SDO=1V8; alt 0x46])",
+      "TWIM1": "400 kHz I2C1 Fast Mode, 1.8 V (nPM1300 0x6B)",
+      "QSPI": "48-96 MHz Quad SPI SDR, 1.8 V (W25N01JW 1 Gbit / 128 MiB SLC NAND, 998 usable blocks)",
+      "USBD": "USB 2.0 Full-Speed 12 Mbps CDC-ACM (VBUS powered download + charging)",
+      "BLE": "BLE 5.3 2M PHY 2.4 GHz (GATT NUS / L2CAP CoC secondary offload)"
+    }
+  },
+  "binary_flash_format": {
+    "endianness": "little",
+    "frame_header_bytes": 20,
+    "frame_crc_bytes": 4,
+    "max_payload_bytes": 4072,
+    "crc_algorithm": "CRC32-IEEE",
+    "crc_polynomial": "0xEDB88320",
+    "sync_u16": "0xAA55",
+    "timestamp_field": "timestamp_us",
+    "timestamp_type": "uint64_t",
+    "timestamp_bits": 64,
+    "header_fields": [
+      { "name": "sync", "c_type": "uint16_t", "offset": 0, "size": 2 },
+      { "name": "msg_type", "c_type": "uint8_t", "offset": 2, "size": 1 },
+      { "name": "flags", "c_type": "uint8_t", "offset": 3, "size": 1 },
+      { "name": "payload_len", "c_type": "uint16_t", "offset": 4, "size": 2 },
+      { "name": "seq", "c_type": "uint16_t", "offset": 6, "size": 2 },
+      { "name": "timestamp_us", "c_type": "uint64_t", "offset": 8, "size": 8 },
+      { "name": "reserved", "c_type": "uint32_t", "offset": 16, "size": 4 }
+    ],
+    "message_types": {
+      "SESSION_HEADER": {
+        "msg_type_hex": "0x01",
+        "msg_type_id": 1,
+        "schema_ref": "#/schemas/flash_session_header",
+        "payload_bytes": 80,
+        "struct_format": "<4sHHIIQQQHHHHffffBBHffI",
+        "description": "80 B payload (104 B frame): session metadata, sensor ODRs, exact scales, rink preset, mount, height, bench gate"
+      },
+      "IMU_BATCH": {
+        "msg_type_hex": "0x02",
+        "msg_type_id": 2,
+        "schema_ref": "#/schemas/imu_batch_packet",
+        "payload_bytes": "8 + 12 * sample_count",
+        "struct_format": "<HHhH + N*<hhhhhh",
+        "description": "8+12*N B payload (nominal N=20 -> 248 B payload, 272 B frame): primary 6-DOF ICM-42688-P batch in sensor frame S"
+      },
+      "HIGH_G_BATCH": {
+        "msg_type_hex": "0x03",
+        "msg_type_id": 3,
+        "schema_ref": "#/schemas/high_g_batch_packet",
+        "payload_bytes": "8 + 6 * sample_count",
+        "struct_format": "<HHBBH + N*<hhh",
+        "description": "8+6*N B payload (e.g. N=32 -> 200 B payload, 224 B frame): ADXL372 right-aligned >>4 12-bit int16 [-2048,+2047] at 0.980665 (m/s^2)/LSB"
+      },
+      "AUX_ENV": {
+        "msg_type_hex": "0x04",
+        "msg_type_id": 4,
+        "schema_ref": "#/schemas/aux_env_packet",
+        "payload_bytes": 28,
+        "struct_format": "<iiiIhHhHHH",
+        "description": "28 B payload (52 B frame, 50 Hz): MMC5983MA centered 18-bit mag, BMP581 pressure_pa_x64, baro/batt temp, vbatt, soc, pmic_status, validity_flags"
+      },
+      "EVENT_MARKER": {
+        "msg_type_hex": "0x05",
+        "msg_type_id": 5,
+        "schema_ref": "#/schemas/event_marker_packet",
+        "payload_bytes": 16,
+        "struct_format": "<HHfQ",
+        "description": "16 B payload (40 B frame): async event marker (codes 1..8, severity 0..3, value_f32, detail_u64)"
+      },
+      "CALIBRATION_BLOCK": {
+        "msg_type_hex": "0x06",
+        "msg_type_id": 6,
+        "schema_ref": "#/schemas/calibration_block",
+        "payload_bytes": 288,
+        "struct_format": "<HHQ9f9f3f9f3f9f9f3f3f9fffI",
+        "description": "288 B payload (312 B frame): ICM & ADXL372 R_BS matrices, misalign/scale matrices, biases, mag hard/soft-iron, baseline norm/dip, CRC32"
+      },
+      "SESSION_FOOTER": {
+        "msg_type_hex": "0x07",
+        "msg_type_id": 7,
+        "schema_ref": "#/schemas/flash_session_footer",
+        "payload_bytes": 72,
+        "struct_format": "<QIIIIIIQ32s",
+        "description": "72 B payload (96 B frame): end UTC, IMU/high-g/aux counts, dropped counts, end_reason, total_bytes, pre_footer_sha256[32]"
+      }
+    }
+  },
+  "download_protocol": {
+    "primary_transport": "USB 2.0 FS CDC-ACM",
+    "secondary_transport": "BLE 5.3 2M PHY GATT NUS / L2CAP",
+    "endianness": "little",
+    "crc_algorithm": "CRC32-IEEE",
+    "request_sync_u16": "0xAA55",
+    "response_sync_u16": "0x55AA",
+    "max_chunk_bytes": 4096,
+    "commands": {
+      "LIST_SESSIONS": "0x01",
+      "GET_HEADER": "0x02",
+      "READ_CHUNK": "0x03",
+      "ACK_VERIFY": "0x04",
+      "DELETE_SESSION": "0x05",
+      "GET_DEVICE_STATUS": "0x06",
+      "SET_UTC_TIME": "0x07"
+    },
+    "status_codes": {
+      "OK": "0x00",
+      "ERR_BAD_CRC": "0x01",
+      "ERR_UNKNOWN_CMD": "0x02",
+      "ERR_SESSION_NOT_FOUND": "0x03",
+      "ERR_OFFSET_OUT_OF_RANGE": "0x04",
+      "ERR_NOT_VERIFIED": "0x05",
+      "ERR_FLASH_IO": "0x06",
+      "ERR_BUSY_RECORDING": "0x07",
+      "ERR_VERIFY_MISMATCH": "0x08",
+      "ERR_INVALID_PARAM": "0x09"
+    }
+  },
+  "rink_geometry_presets": {
+    "NHL_200X85FT": {
+      "length_m": 60.96,
+      "width_m": 25.908,
+      "corner_radius_m": 8.5344,
+      "goal_line_from_boards_m": 3.3528,
+      "blue_line_from_boards_m": 22.86,
+      "ice_plane_z_m": 0.0,
+      "default_bench_gate_xy_m": [-6.0, 12.954]
+    },
+    "IIHF_60X30M": {
+      "length_m": 60.0,
+      "width_m": 30.0,
+      "corner_radius_m": 8.5,
+      "goal_line_from_boards_m": 4.0,
+      "blue_line_from_boards_m": 22.5,
+      "ice_plane_z_m": 0.0,
+      "default_bench_gate_xy_m": [-6.0, 15.0]
+    },
+    "CUSTOM": {
+      "length_m": 56.0,
+      "width_m": 26.0,
+      "corner_radius_m": 7.5,
+      "goal_line_from_boards_m": 3.5,
+      "blue_line_from_boards_m": 21.0,
+      "ice_plane_z_m": 0.0,
+      "default_bench_gate_xy_m": [-5.0, 13.0]
+    }
+  },
+  "schemas": {
+    "calibration_block": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "CalibrationBlock",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cal_version",
+        "flags",
+        "cal_utc_ms",
+        "sensor_to_body_rotation_matrix",
+        "accel_misalign_scale",
+        "accel_bias_mps2",
+        "gyro_misalign_scale",
+        "gyro_bias_rads",
+        "high_g_to_body_rotation_matrix",
+        "high_g_misalign_scale",
+        "high_g_bias_mps2",
+        "mag_hard_iron_ut",
+        "mag_soft_iron_matrix",
+        "baseline_mag_norm_ut",
+        "baseline_mag_dip_deg",
+        "cal_crc32"
+      ],
+      "properties": {
+        "cal_version": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "flags": { "type": "integer", "minimum": 0, "maximum": 65535 },
+        "cal_utc_ms": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+        "sensor_to_body_rotation_matrix": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": { "type": "number", "minimum": -1.000001, "maximum": 1.000001 }
+          }
+        },
+        "accel_misalign_scale": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": { "type": "number", "minimum": -1.5, "maximum": 1.5 }
+          }
+        },
+        "accel_bias_mps2": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "type": "number", "minimum": -20.0, "maximum": 20.0 }
+        },
+        "gyro_misalign_scale": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": { "type": "number", "minimum": -1.5, "maximum": 1.5 }
+          }
+        },
+        "gyro_bias_rads": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "type": "number", "minimum": -5.0, "maximum": 5.0 }
+        },
+        "high_g_to_body_rotation_matrix": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": { "type": "number", "minimum": -1.000001, "maximum": 1.000001 }
+          }
+        },
+        "high_g_misalign_scale": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": { "type": "number", "minimum": -1.5, "maximum": 1.5 }
+          }
+        },
+        "high_g_bias_mps2": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "type": "number", "minimum": -50.0, "maximum": 50.0 }
+        },
+        "mag_hard_iron_ut": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "type": "number", "minimum": -2000.0, "maximum": 2000.0 }
+        },
+        "mag_soft_iron_matrix": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": { "type": "number", "minimum": -2.0, "maximum": 2.0 }
+          }
+        },
+        "baseline_mag_norm_ut": { "type": "number", "minimum": 10.0, "maximum": 150.0 },
+        "baseline_mag_dip_deg": { "type": "number", "minimum": -90.0, "maximum": 90.0 },
+        "cal_crc32": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+      }
+    },
+    "flash_session_header": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "FlashSessionHeader",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sync",
+        "msg_type",
+        "flags",
+        "seq",
+        "timestamp_us",
+        "magic",
+        "format_version",
+        "hw_rev",
+        "fw_version",
+        "cal_crc32",
+        "session_id",
+        "start_utc_ms",
+        "device_id",
+        "imu_odr_hz",
+        "high_g_odr_hz",
+        "mag_odr_hz",
+        "baro_odr_hz",
+        "accel_scale_mps2_per_lsb",
+        "gyro_scale_rads_per_lsb",
+        "high_g_scale_mps2_per_lsb",
+        "mag_scale_ut_per_lsb",
+        "rink_preset",
+        "mount_location",
+        "player_height_cm",
+        "bench_gate_xy_m",
+        "crc32"
+      ],
+      "properties": {
+        "sync": { "type": "integer", "const": 43605 },
+        "msg_type": { "type": "integer", "const": 1 },
+        "flags": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "seq": { "type": "integer", "minimum": 0, "maximum": 65535 },
+        "timestamp_us": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+        "magic": { "type": "string", "const": "HKS1" },
+        "format_version": { "type": "integer", "const": 1 },
+        "hw_rev": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "fw_version": { "type": "integer", "minimum": 1, "maximum": 4294967295 },
+        "cal_crc32": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "session_id": { "type": "integer", "minimum": 1, "maximum": 18446744073709551615 },
+        "start_utc_ms": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+        "device_id": { "type": "integer", "minimum": 1, "maximum": 18446744073709551615 },
+        "imu_odr_hz": { "type": "integer", "enum": [100, 200, 400] },
+        "high_g_odr_hz": { "type": "integer", "enum": [0, 400, 800, 1600, 3200] },
+        "mag_odr_hz": { "type": "integer", "enum": [25, 50, 100] },
+        "baro_odr_hz": { "type": "integer", "enum": [10, 25, 50] },
+        "accel_scale_mps2_per_lsb": { "type": "number", "exclusiveMinimum": 0.0 },
+        "gyro_scale_rads_per_lsb": { "type": "number", "exclusiveMinimum": 0.0 },
+        "high_g_scale_mps2_per_lsb": { "type": "number", "exclusiveMinimum": 0.0 },
+        "mag_scale_ut_per_lsb": { "type": "number", "exclusiveMinimum": 0.0 },
+        "rink_preset": { "type": "string", "enum": ["NHL_200X85FT", "IIHF_60X30M", "CUSTOM"] },
+        "mount_location": { "type": "string", "enum": ["STERNUM_POCKET", "CHEST_STRAP"] },
+        "player_height_cm": { "type": "integer", "minimum": 0, "maximum": 250 },
+        "bench_gate_xy_m": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "number", "minimum": -35.0, "maximum": 35.0 }
+        },
+        "crc32": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+      }
+    },
+    "imu_batch_packet": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "ImuBatchPacket",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sync",
+        "msg_type",
+        "flags",
+        "seq",
+        "timestamp_us",
+        "sample_count",
+        "odr_hz",
+        "temp_c_x100",
+        "samples",
+        "crc32"
+      ],
+      "properties": {
+        "sync": { "type": "integer", "const": 43605 },
+        "msg_type": { "type": "integer", "const": 2 },
+        "flags": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "seq": { "type": "integer", "minimum": 0, "maximum": 65535 },
+        "timestamp_us": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+        "sample_count": { "type": "integer", "minimum": 1, "maximum": 338 },
+        "odr_hz": { "type": "integer", "enum": [100, 200, 400] },
+        "temp_c_x100": { "type": "integer", "minimum": -4000, "maximum": 8500 },
+        "samples": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 338,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["ax_i16", "ay_i16", "az_i16", "gx_i16", "gy_i16", "gz_i16"],
+            "properties": {
+              "ax_i16": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+              "ay_i16": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+              "az_i16": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+              "gx_i16": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+              "gy_i16": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+              "gz_i16": { "type": "integer", "minimum": -32768, "maximum": 32767 }
+            }
+          }
+        },
+        "crc32": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+      }
+    },
+    "high_g_batch_packet": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "HighGBatchPacket",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sync",
+        "msg_type",
+        "flags",
+        "seq",
+        "timestamp_us",
+        "sample_count",
+        "odr_hz",
+        "trigger_mode",
+        "samples",
+        "crc32"
+      ],
+      "properties": {
+        "sync": { "type": "integer", "const": 43605 },
+        "msg_type": { "type": "integer", "const": 3 },
+        "flags": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "seq": { "type": "integer", "minimum": 0, "maximum": 65535 },
+        "timestamp_us": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+        "sample_count": { "type": "integer", "minimum": 1, "maximum": 677 },
+        "odr_hz": { "type": "integer", "enum": [400, 800, 1600, 3200] },
+        "trigger_mode": { "type": "string", "enum": ["CONTINUOUS", "IMPACT_BURST"] },
+        "samples": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 677,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["ax_i16", "ay_i16", "az_i16"],
+            "properties": {
+              "ax_i16": { "type": "integer", "minimum": -2048, "maximum": 2047 },
+              "ay_i16": { "type": "integer", "minimum": -2048, "maximum": 2047 },
+              "az_i16": { "type": "integer", "minimum": -2048, "maximum": 2047 }
+            }
+          }
+        },
+        "crc32": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+      }
+    },
+    "aux_env_packet": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "AuxEnvPacket",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sync",
+        "msg_type",
+        "flags",
+        "seq",
+        "timestamp_us",
+        "mx_i32",
+        "my_i32",
+        "mz_i32",
+        "pressure_pa_x64",
+        "baro_temp_c_x100",
+        "vbatt_mv",
+        "batt_temp_c_x100",
+        "soc_pct_x10",
+        "pmic_status",
+        "validity_flags",
+        "crc32"
+      ],
+      "properties": {
+        "sync": { "type": "integer", "const": 43605 },
+        "msg_type": { "type": "integer", "const": 4 },
+        "flags": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "seq": { "type": "integer", "minimum": 0, "maximum": 65535 },
+        "timestamp_us": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+        "mx_i32": { "type": "integer", "minimum": -131072, "maximum": 131071 },
+        "my_i32": { "type": "integer", "minimum": -131072, "maximum": 131071 },
+        "mz_i32": { "type": "integer", "minimum": -131072, "maximum": 131071 },
+        "pressure_pa_x64": { "type": "integer", "minimum": 1920000, "maximum": 8000000 },
+        "baro_temp_c_x100": { "type": "integer", "minimum": -4000, "maximum": 8500 },
+        "vbatt_mv": { "type": "integer", "minimum": 2500, "maximum": 4400 },
+        "batt_temp_c_x100": { "type": "integer", "minimum": -4000, "maximum": 8500 },
+        "soc_pct_x10": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "pmic_status": { "type": "integer", "minimum": 0, "maximum": 65535 },
+        "validity_flags": { "type": "integer", "minimum": 0, "maximum": 65535 },
+        "crc32": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+      }
+    },
+    "event_marker_packet": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "EventMarkerPacket",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sync",
+        "msg_type",
+        "flags",
+        "seq",
+        "timestamp_us",
+        "event_code",
+        "severity",
+        "value_f32",
+        "detail_u64",
+        "crc32"
+      ],
+      "properties": {
+        "sync": { "type": "integer", "const": 43605 },
+        "msg_type": { "type": "integer", "const": 5 },
+        "flags": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "seq": { "type": "integer", "minimum": 0, "maximum": 65535 },
+        "timestamp_us": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+        "event_code": {
+          "type": "string",
+          "enum": [
+            "SESSION_START",
+            "BUTTON_MARK",
+            "IMPACT_SPIKE",
+            "SHIFT_HINT_ON",
+            "SHIFT_HINT_OFF",
+            "LOW_BATT",
+            "BOARD_COLLISION",
+            "SESSION_END"
+          ]
+        },
+        "severity": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "value_f32": { "type": "number" },
+        "detail_u64": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+        "crc32": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+      }
+    },
+    "flash_session_footer": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "FlashSessionFooter",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sync",
+        "msg_type",
+        "flags",
+        "seq",
+        "timestamp_us",
+        "end_utc_ms",
+        "total_imu_samples",
+        "dropped_imu_samples",
+        "total_high_g_samples",
+        "dropped_high_g_samples",
+        "total_aux_samples",
+        "end_reason",
+        "total_bytes",
+        "pre_footer_sha256",
+        "crc32"
+      ],
+      "properties": {
+        "sync": { "type": "integer", "const": 43605 },
+        "msg_type": { "type": "integer", "const": 7 },
+        "flags": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "seq": { "type": "integer", "minimum": 0, "maximum": 65535 },
+        "timestamp_us": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+        "end_utc_ms": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+        "total_imu_samples": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "dropped_imu_samples": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "total_high_g_samples": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "dropped_high_g_samples": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "total_aux_samples": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "end_reason": {
+          "type": "string",
+          "enum": ["BUTTON_STOP", "USB_DOCK", "LOW_BATT", "FLASH_FULL", "WATCHDOG_RECOVER"]
+        },
+        "total_bytes": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+        "pre_footer_sha256": { "type": "string", "pattern": "^[0-9A-Fa-f]{64}$" },
+        "crc32": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+      }
+    },
+    "download_command": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "DownloadCommand",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sync", "command", "cmd_id", "seq", "payload", "crc32"],
+      "properties": {
+        "sync": { "type": "integer", "const": 43605 },
+        "command": {
+          "type": "string",
+          "enum": [
+            "LIST_SESSIONS",
+            "GET_HEADER",
+            "READ_CHUNK",
+            "ACK_VERIFY",
+            "DELETE_SESSION",
+            "GET_DEVICE_STATUS",
+            "SET_UTC_TIME"
+          ]
+        },
+        "cmd_id": { "type": "integer", "minimum": 1, "maximum": 7 },
+        "seq": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "session_id": { "type": "integer", "minimum": 1, "maximum": 18446744073709551615 },
+            "offset_bytes": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+            "length_bytes": { "type": "integer", "minimum": 1, "maximum": 4096 },
+            "computed_file_crc32": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+            "computed_sha256": { "type": "string", "pattern": "^[0-9A-Fa-f]{64}$" },
+            "force_flag": { "type": "integer", "enum": [0, 1] },
+            "utc_ms": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 }
+          }
+        },
+        "crc32": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "command": { "const": "LIST_SESSIONS" } } },
+          "then": {
+            "properties": {
+              "cmd_id": { "const": 1 },
+              "payload": { "type": "object", "maxProperties": 0 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "command": { "const": "GET_HEADER" } } },
+          "then": {
+            "properties": {
+              "cmd_id": { "const": 2 },
+              "payload": {
+                "required": ["session_id"],
+                "propertyNames": { "enum": ["session_id"] }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "command": { "const": "READ_CHUNK" } } },
+          "then": {
+            "properties": {
+              "cmd_id": { "const": 3 },
+              "payload": {
+                "required": ["session_id", "offset_bytes", "length_bytes"],
+                "propertyNames": { "enum": ["session_id", "offset_bytes", "length_bytes"] }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "command": { "const": "ACK_VERIFY" } } },
+          "then": {
+            "properties": {
+              "cmd_id": { "const": 4 },
+              "payload": {
+                "required": ["session_id", "computed_file_crc32"],
+                "propertyNames": { "enum": ["session_id", "computed_file_crc32", "computed_sha256"] }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "command": { "const": "DELETE_SESSION" } } },
+          "then": {
+            "properties": {
+              "cmd_id": { "const": 5 },
+              "payload": {
+                "required": ["session_id", "force_flag"],
+                "propertyNames": { "enum": ["session_id", "force_flag"] }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "command": { "const": "GET_DEVICE_STATUS" } } },
+          "then": {
+            "properties": {
+              "cmd_id": { "const": 6 },
+              "payload": { "type": "object", "maxProperties": 0 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "command": { "const": "SET_UTC_TIME" } } },
+          "then": {
+            "properties": {
+              "cmd_id": { "const": 7 },
+              "payload": {
+                "required": ["utc_ms"],
+                "propertyNames": { "enum": ["utc_ms"] }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "download_response": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "DownloadResponse",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sync", "command", "cmd_id", "status", "status_code", "seq", "payload", "crc32"],
+      "properties": {
+        "sync": { "type": "integer", "const": 21930 },
+        "command": {
+          "type": "string",
+          "enum": [
+            "LIST_SESSIONS",
+            "GET_HEADER",
+            "READ_CHUNK",
+            "ACK_VERIFY",
+            "DELETE_SESSION",
+            "GET_DEVICE_STATUS",
+            "SET_UTC_TIME"
+          ]
+        },
+        "cmd_id": { "type": "integer", "minimum": 1, "maximum": 7 },
+        "status": {
+          "type": "string",
+          "enum": [
+            "OK",
+            "ERR_BAD_CRC",
+            "ERR_UNKNOWN_CMD",
+            "ERR_SESSION_NOT_FOUND",
+            "ERR_OFFSET_OUT_OF_RANGE",
+            "ERR_NOT_VERIFIED",
+            "ERR_FLASH_IO",
+            "ERR_BUSY_RECORDING",
+            "ERR_VERIFY_MISMATCH",
+            "ERR_INVALID_PARAM"
+          ]
+        },
+        "status_code": { "type": "integer", "minimum": 0, "maximum": 9 },
+        "seq": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "sessions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "session_id",
+                  "start_utc_ms",
+                  "duration_ms",
+                  "byte_size",
+                  "sample_count",
+                  "flags"
+                ],
+                "properties": {
+                  "session_id": { "type": "integer", "minimum": 1, "maximum": 18446744073709551615 },
+                  "start_utc_ms": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+                  "duration_ms": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+                  "byte_size": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+                  "sample_count": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+                  "flags": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+                }
+              }
+            },
+            "header_b64": {
+              "type": "string",
+              "description": "Base64-encoded 416 B concatenated 0x01 header frame (104 B) + 0x06 calibration frame (312 B)"
+            },
+            "offset_bytes": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+            "actual_len": { "type": "integer", "minimum": 0, "maximum": 4096 },
+            "data_b64": { "type": "string" },
+            "verified_status": { "type": "integer", "enum": [0, 1] },
+            "hash_mode": { "type": "integer", "enum": [1, 2] },
+            "freed_bytes": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+            "fw_version": { "type": "integer", "minimum": 1, "maximum": 4294967295 },
+            "hw_rev": { "type": "integer", "minimum": 1, "maximum": 65535 },
+            "vbatt_mv": { "type": "integer", "minimum": 2500, "maximum": 4400 },
+            "soc_pct_x10": { "type": "integer", "minimum": 0, "maximum": 1000 },
+            "pmic_status": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255,
+              "description": "Primary nPM1300 status flags (bits [7:0] of AUX_ENV pmic_status)"
+            },
+            "flash_free_kb": { "type": "integer", "minimum": 0 },
+            "recording_state": { "type": "integer", "minimum": 0, "maximum": 255 },
+            "utc_ms": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+            "error_detail": { "type": "string" }
+          }
+        },
+        "crc32": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "command": { "const": "LIST_SESSIONS" } } },
+          "then": { "properties": { "cmd_id": { "const": 1 } } }
+        },
+        {
+          "if": { "properties": { "command": { "const": "GET_HEADER" } } },
+          "then": { "properties": { "cmd_id": { "const": 2 } } }
+        },
+        {
+          "if": { "properties": { "command": { "const": "READ_CHUNK" } } },
+          "then": { "properties": { "cmd_id": { "const": 3 } } }
+        },
+        {
+          "if": { "properties": { "command": { "const": "ACK_VERIFY" } } },
+          "then": { "properties": { "cmd_id": { "const": 4 } } }
+        },
+        {
+          "if": { "properties": { "command": { "const": "DELETE_SESSION" } } },
+          "then": { "properties": { "cmd_id": { "const": 5 } } }
+        },
+        {
+          "if": { "properties": { "command": { "const": "GET_DEVICE_STATUS" } } },
+          "then": { "properties": { "cmd_id": { "const": 6 } } }
+        },
+        {
+          "if": { "properties": { "command": { "const": "SET_UTC_TIME" } } },
+          "then": { "properties": { "cmd_id": { "const": 7 } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "OK" } } },
+          "then": { "properties": { "status_code": { "const": 0 } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "ERR_BAD_CRC" } } },
+          "then": { "properties": { "status_code": { "const": 1 } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "ERR_UNKNOWN_CMD" } } },
+          "then": { "properties": { "status_code": { "const": 2 } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "ERR_SESSION_NOT_FOUND" } } },
+          "then": { "properties": { "status_code": { "const": 3 } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "ERR_OFFSET_OUT_OF_RANGE" } } },
+          "then": { "properties": { "status_code": { "const": 4 } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "ERR_NOT_VERIFIED" } } },
+          "then": { "properties": { "status_code": { "const": 5 } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "ERR_FLASH_IO" } } },
+          "then": { "properties": { "status_code": { "const": 6 } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "ERR_BUSY_RECORDING" } } },
+          "then": { "properties": { "status_code": { "const": 7 } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "ERR_VERIFY_MISMATCH" } } },
+          "then": { "properties": { "status_code": { "const": 8 } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "ERR_INVALID_PARAM" } } },
+          "then": { "properties": { "status_code": { "const": 9 } } }
+        }
+      ]
+    },
+    "analytics_trajectory_point": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "AnalyticsTrajectoryPoint",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "t",
+        "x",
+        "y",
+        "vx",
+        "vy",
+        "speed",
+        "ax",
+        "ay",
+        "az",
+        "accel_mag",
+        "q_WB",
+        "state",
+        "confidence"
+      ],
+      "properties": {
+        "t": { "type": "number", "minimum": 0.0 },
+        "x": { "type": "number", "minimum": -35.0, "maximum": 35.0 },
+        "y": { "type": "number", "minimum": -20.0, "maximum": 20.0 },
+        "vx": { "type": "number", "minimum": -25.0, "maximum": 25.0 },
+        "vy": { "type": "number", "minimum": -25.0, "maximum": 25.0 },
+        "speed": { "type": "number", "minimum": 0.0, "maximum": 25.0 },
+        "ax": { "type": "number", "minimum": -2050.0, "maximum": 2050.0 },
+        "ay": { "type": "number", "minimum": -2050.0, "maximum": 2050.0 },
+        "az": { "type": "number", "minimum": -2050.0, "maximum": 2050.0 },
+        "accel_mag": { "type": "number", "minimum": 0.0, "maximum": 3550.0 },
+        "q_WB": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": { "type": "number", "minimum": -1.000001, "maximum": 1.000001 }
+        },
+        "state": {
+          "type": "string",
+          "enum": ["BENCH", "GLIDING", "STRIDING", "STOPPING", "IMPACT", "UNKNOWN"]
+        },
+        "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 }
+      }
+    },
+    "analytics_shift_summary": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "AnalyticsShiftSummary",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shift_id",
+        "start_s",
+        "end_s",
+        "duration_s",
+        "distance_m",
+        "peak_speed_mps",
+        "avg_speed_mps",
+        "peak_accel_mps2",
+        "high_intensity_bouts"
+      ],
+      "properties": {
+        "shift_id": { "type": "integer", "minimum": 1 },
+        "start_s": { "type": "number", "minimum": 0.0 },
+        "end_s": { "type": "number", "minimum": 0.0 },
+        "duration_s": { "type": "number", "exclusiveMinimum": 0.0 },
+        "distance_m": { "type": "number", "minimum": 0.0 },
+        "peak_speed_mps": { "type": "number", "minimum": 0.0, "maximum": 25.0 },
+        "avg_speed_mps": { "type": "number", "minimum": 0.0, "maximum": 25.0 },
+        "peak_accel_mps2": { "type": "number", "minimum": 0.0, "maximum": 3500.0 },
+        "high_intensity_bouts": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "analytics_session_summary": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "AnalyticsSessionSummary",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_id",
+        "device_id",
+        "rink_preset",
+        "gps_used",
+        "external_anchors_used",
+        "total_duration_s",
+        "total_ice_time_s",
+        "total_distance_m",
+        "shift_count",
+        "peak_speed_mps",
+        "peak_accel_mps2",
+        "battery_used_pct"
+      ],
+      "properties": {
+        "session_id": { "type": "string", "pattern": "^[0-9A-Fa-f-]+$" },
+        "device_id": { "type": "string", "minLength": 1 },
+        "rink_preset": { "type": "string", "enum": ["NHL_200X85FT", "IIHF_60X30M", "CUSTOM"] },
+        "gps_used": { "type": "boolean", "const": false },
+        "external_anchors_used": { "type": "boolean", "const": false },
+        "total_duration_s": { "type": "number", "minimum": 0.0 },
+        "total_ice_time_s": { "type": "number", "minimum": 0.0 },
+        "total_distance_m": { "type": "number", "minimum": 0.0 },
+        "shift_count": { "type": "integer", "minimum": 0 },
+        "peak_speed_mps": { "type": "number", "minimum": 0.0, "maximum": 25.0 },
+        "peak_accel_mps2": { "type": "number", "minimum": 0.0, "maximum": 3500.0 },
+        "battery_used_pct": { "type": "number", "minimum": 0.0, "maximum": 100.0 }
+      }
+    },
+    "analytics_report": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "AnalyticsReport",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "session_summary", "shifts", "trajectory"],
+      "$defs": {
+        "analytics_trajectory_point": {
+          "title": "AnalyticsTrajectoryPoint",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "t",
+            "x",
+            "y",
+            "vx",
+            "vy",
+            "speed",
+            "ax",
+            "ay",
+            "az",
+            "accel_mag",
+            "q_WB",
+            "state",
+            "confidence"
+          ],
+          "properties": {
+            "t": { "type": "number", "minimum": 0.0 },
+            "x": { "type": "number", "minimum": -35.0, "maximum": 35.0 },
+            "y": { "type": "number", "minimum": -20.0, "maximum": 20.0 },
+            "vx": { "type": "number", "minimum": -25.0, "maximum": 25.0 },
+            "vy": { "type": "number", "minimum": -25.0, "maximum": 25.0 },
+            "speed": { "type": "number", "minimum": 0.0, "maximum": 25.0 },
+            "ax": { "type": "number", "minimum": -2050.0, "maximum": 2050.0 },
+            "ay": { "type": "number", "minimum": -2050.0, "maximum": 2050.0 },
+            "az": { "type": "number", "minimum": -2050.0, "maximum": 2050.0 },
+            "accel_mag": { "type": "number", "minimum": 0.0, "maximum": 3550.0 },
+            "q_WB": {
+              "type": "array",
+              "minItems": 4,
+              "maxItems": 4,
+              "items": { "type": "number", "minimum": -1.000001, "maximum": 1.000001 }
+            },
+            "state": {
+              "type": "string",
+              "enum": ["BENCH", "GLIDING", "STRIDING", "STOPPING", "IMPACT", "UNKNOWN"]
+            },
+            "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 }
+          }
+        },
+        "analytics_shift_summary": {
+          "title": "AnalyticsShiftSummary",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "shift_id",
+            "start_s",
+            "end_s",
+            "duration_s",
+            "distance_m",
+            "peak_speed_mps",
+            "avg_speed_mps",
+            "peak_accel_mps2",
+            "high_intensity_bouts"
+          ],
+          "properties": {
+            "shift_id": { "type": "integer", "minimum": 1 },
+            "start_s": { "type": "number", "minimum": 0.0 },
+            "end_s": { "type": "number", "minimum": 0.0 },
+            "duration_s": { "type": "number", "exclusiveMinimum": 0.0 },
+            "distance_m": { "type": "number", "minimum": 0.0 },
+            "peak_speed_mps": { "type": "number", "minimum": 0.0, "maximum": 25.0 },
+            "avg_speed_mps": { "type": "number", "minimum": 0.0, "maximum": 25.0 },
+            "peak_accel_mps2": { "type": "number", "minimum": 0.0, "maximum": 3500.0 },
+            "high_intensity_bouts": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "analytics_session_summary": {
+          "title": "AnalyticsSessionSummary",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "session_id",
+            "device_id",
+            "rink_preset",
+            "gps_used",
+            "external_anchors_used",
+            "total_duration_s",
+            "total_ice_time_s",
+            "total_distance_m",
+            "shift_count",
+            "peak_speed_mps",
+            "peak_accel_mps2",
+            "battery_used_pct"
+          ],
+          "properties": {
+            "session_id": { "type": "string", "pattern": "^[0-9A-Fa-f-]+$" },
+            "device_id": { "type": "string", "minLength": 1 },
+            "rink_preset": { "type": "string", "enum": ["NHL_200X85FT", "IIHF_60X30M", "CUSTOM"] },
+            "gps_used": { "type": "boolean", "const": false },
+            "external_anchors_used": { "type": "boolean", "const": false },
+            "total_duration_s": { "type": "number", "minimum": 0.0 },
+            "total_ice_time_s": { "type": "number", "minimum": 0.0 },
+            "total_distance_m": { "type": "number", "minimum": 0.0 },
+            "shift_count": { "type": "integer", "minimum": 0 },
+            "peak_speed_mps": { "type": "number", "minimum": 0.0, "maximum": 25.0 },
+            "peak_accel_mps2": { "type": "number", "minimum": 0.0, "maximum": 3500.0 },
+            "battery_used_pct": { "type": "number", "minimum": 0.0, "maximum": 100.0 }
+          }
+        }
+      },
+      "properties": {
+        "schema_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "session_summary": { "$ref": "#/$defs/analytics_session_summary" },
+        "shifts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/analytics_shift_summary" }
+        },
+        "trajectory": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/analytics_trajectory_point" }
+        }
+      }
+    }
+  },
+  "examples": {
+    "calibration_block": {
+      "cal_version": 1,
+      "flags": 15,
+      "cal_utc_ms": 1763852400000,
+      "sensor_to_body_rotation_matrix": [
+        [0.0, 0.0, 1.0],
+        [0.0, -1.0, 0.0],
+        [1.0, 0.0, 0.0]
+      ],
+      "accel_misalign_scale": [
+        [1.001, 0.002, -0.001],
+        [-0.002, 0.999, 0.001],
+        [0.001, -0.001, 1.0]
+      ],
+      "accel_bias_mps2": [0.012, -0.008, 0.015],
+      "gyro_misalign_scale": [
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0]
+      ],
+      "gyro_bias_rads": [0.0011, -0.0008, 0.0005],
+      "high_g_to_body_rotation_matrix": [
+        [0.0, 0.0, 1.0],
+        [0.0, -1.0, 0.0],
+        [1.0, 0.0, 0.0]
+      ],
+      "high_g_misalign_scale": [
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0]
+      ],
+      "high_g_bias_mps2": [0.15, -0.1, 0.05],
+      "mag_hard_iron_ut": [12.4, -5.8, 3.1],
+      "mag_soft_iron_matrix": [
+        [1.02, 0.01, 0.0],
+        [0.01, 0.98, 0.0],
+        [0.0, 0.0, 1.0]
+      ],
+      "baseline_mag_norm_ut": 51.2,
+      "baseline_mag_dip_deg": 66.4,
+      "cal_crc32": 3405691582
+    },
+    "flash_session_header": {
+      "sync": 43605,
+      "msg_type": 1,
+      "flags": 32,
+      "seq": 0,
+      "timestamp_us": 0,
+      "magic": "HKS1",
+      "format_version": 1,
+      "hw_rev": 256,
+      "fw_version": 16777216,
+      "cal_crc32": 3405691582,
+      "session_id": 1001,
+      "start_utc_ms": 1763852500000,
+      "device_id": 102030405060708,
+      "imu_odr_hz": 200,
+      "high_g_odr_hz": 3200,
+      "mag_odr_hz": 50,
+      "baro_odr_hz": 25,
+      "accel_scale_mps2_per_lsb": 0.0047884033203125,
+      "gyro_scale_rads_per_lsb": 0.001064225153655079,
+      "high_g_scale_mps2_per_lsb": 0.980665,
+      "mag_scale_ut_per_lsb": 0.006103515625,
+      "rink_preset": "NHL_200X85FT",
+      "mount_location": "STERNUM_POCKET",
+      "player_height_cm": 183,
+      "bench_gate_xy_m": [-6.0, 12.954],
+      "crc32": 287454020
+    },
+    "imu_batch_packet": {
+      "sync": 43605,
+      "msg_type": 2,
+      "flags": 0,
+      "seq": 1,
+      "timestamp_us": 7200000000,
+      "sample_count": 2,
+      "odr_hz": 200,
+      "temp_c_x100": 2150,
+      "samples": [
+        { "ax_i16": 2048, "ay_i16": 12, "az_i16": -4, "gx_i16": 15, "gy_i16": -8, "gz_i16": 42 },
+        { "ax_i16": 2052, "ay_i16": 14, "az_i16": -2, "gx_i16": 14, "gy_i16": -6, "gz_i16": 45 }
+      ],
+      "crc32": 1122334455
+    },
+    "high_g_batch_packet": {
+      "sync": 43605,
+      "msg_type": 3,
+      "flags": 16,
+      "seq": 2,
+      "timestamp_us": 7200050000,
+      "sample_count": 2,
+      "odr_hz": 3200,
+      "trigger_mode": "IMPACT_BURST",
+      "samples": [
+        { "ax_i16": -120, "ay_i16": 340, "az_i16": 45 },
+        { "ax_i16": -185, "ay_i16": 410, "az_i16": 52 }
+      ],
+      "crc32": 2233445566
+    },
+    "aux_env_packet": {
+      "sync": 43605,
+      "msg_type": 4,
+      "flags": 0,
+      "seq": 3,
+      "timestamp_us": 7200100000,
+      "mx_i32": 3200,
+      "my_i32": -1400,
+      "mz_i32": 7300,
+      "pressure_pa_x64": 6484800,
+      "baro_temp_c_x100": 2140,
+      "vbatt_mv": 3920,
+      "batt_temp_c_x100": 1850,
+      "soc_pct_x10": 845,
+      "pmic_status": 0,
+      "validity_flags": 7,
+      "crc32": 3344556677
+    },
+    "event_marker_packet": {
+      "sync": 43605,
+      "msg_type": 5,
+      "flags": 16,
+      "seq": 4,
+      "timestamp_us": 7200150000,
+      "event_code": "IMPACT_SPIKE",
+      "severity": 3,
+      "value_f32": 384.0,
+      "detail_u64": 7200050000,
+      "crc32": 445566778
+    },
+    "flash_session_footer": {
+      "sync": 43605,
+      "msg_type": 7,
+      "flags": 0,
+      "seq": 999,
+      "timestamp_us": 7205000000,
+      "end_utc_ms": 1763859705000,
+      "total_imu_samples": 1441000,
+      "dropped_imu_samples": 0,
+      "total_high_g_samples": 6400,
+      "dropped_high_g_samples": 0,
+      "total_aux_samples": 360250,
+      "end_reason": "BUTTON_STOP",
+      "total_bytes": 38732180,
+      "pre_footer_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "crc32": 556677889
+    },
+    "download_command": {
+      "sync": 43605,
+      "command": "READ_CHUNK",
+      "cmd_id": 3,
+      "seq": 12,
+      "payload": {
+        "session_id": 1001,
+        "offset_bytes": 0,
+        "length_bytes": 4096
+      },
+      "crc32": 998877665
+    },
+    "download_response": {
+      "sync": 21930,
+      "command": "READ_CHUNK",
+      "cmd_id": 3,
+      "status": "OK",
+      "status_code": 0,
+      "seq": 12,
+      "payload": {
+        "offset_bytes": 0,
+        "actual_len": 16,
+        "data_b64": "VVrQAQEAAAAAAAAAAAAAAA=="
+      },
+      "crc32": 887766554
+    },
+    "analytics_trajectory_point": {
+      "t": 12.5,
+      "x": 4.2,
+      "y": -2.1,
+      "vx": 5.8,
+      "vy": 1.1,
+      "speed": 5.903389,
+      "ax": 2.4,
+      "ay": -0.6,
+      "az": 0.1,
+      "accel_mag": 2.475884,
+      "q_WB": [0.9914448613738104, 0.0, 0.13052619222005157, 0.0],
+      "state": "STRIDING",
+      "confidence": 0.87
+    },
+    "analytics_shift_summary": {
+      "shift_id": 1,
+      "start_s": 5.0,
+      "end_s": 48.5,
+      "duration_s": 43.5,
+      "distance_m": 214.6,
+      "peak_speed_mps": 8.4,
+      "avg_speed_mps": 4.93,
+      "peak_accel_mps2": 34.2,
+      "high_intensity_bouts": 3
+    },
+    "analytics_session_summary": {
+      "session_id": "00000000000003e9",
+      "device_id": "HKS-00010203",
+      "rink_preset": "NHL_200X85FT",
+      "gps_used": false,
+      "external_anchors_used": false,
+      "total_duration_s": 7205.0,
+      "total_ice_time_s": 1420.5,
+      "total_distance_m": 6420.8,
+      "shift_count": 1,
+      "peak_speed_mps": 8.4,
+      "peak_accel_mps2": 34.2,
+      "battery_used_pct": 1.2
+    },
+    "analytics_report": {
+      "schema_version": "1.0.0",
+      "session_summary": {
+        "session_id": "00000000000003e9",
+        "device_id": "HKS-00010203",
+        "rink_preset": "NHL_200X85FT",
+        "gps_used": false,
+        "external_anchors_used": false,
+        "total_duration_s": 7205.0,
+        "total_ice_time_s": 1420.5,
+        "total_distance_m": 6420.8,
+        "shift_count": 1,
+        "peak_speed_mps": 8.4,
+        "peak_accel_mps2": 34.2,
+        "battery_used_pct": 1.2
+      },
+      "shifts": [
+        {
+          "shift_id": 1,
+          "start_s": 5.0,
+          "end_s": 48.5,
+          "duration_s": 43.5,
+          "distance_m": 214.6,
+          "peak_speed_mps": 8.4,
+          "avg_speed_mps": 4.93,
+          "peak_accel_mps2": 34.2,
+          "high_intensity_bouts": 3
+        }
+      ],
+      "trajectory": [
+        {
+          "t": 12.5,
+          "x": 4.2,
+          "y": -2.1,
+          "vx": 5.8,
+          "vy": 1.1,
+          "speed": 5.903389,
+          "ax": 2.4,
+          "ay": -0.6,
+          "az": 0.1,
+          "accel_mag": 2.475884,
+          "q_WB": [0.9914448613738104, 0.0, 0.13052619222005157, 0.0],
+          "state": "STRIDING",
+          "confidence": 0.87
+        }
+      ]
+    }
+  }
+}

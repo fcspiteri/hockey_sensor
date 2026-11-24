@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Firmware build artifacts & debug symbols
+firmware/build/
+*.o
+*.a
+*.dSYM/
+
+# KiCad temporary lock / backup / history files
+~*.lck
+*.kicad_prl
+*-backups/
+fp-info-cache
+.history/
+
+# Large local third-party autorouter binary (62 MB)
+freerouting.jar
+
+# Local agent metadata
+.agents/

@@ -1,0 +1,678 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hockey-sensor.local/schemas/interface_contract.meta.schema.json",
+  "title": "hockey_sensor Interface Contract Meta-Schema",
+  "description": "Strict JSON Schema Draft 2020-12 meta-schema validating INTERFACE_CONTRACT.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "schema_standard",
+    "project",
+    "constants",
+    "coordinate_frames",
+    "units_and_tolerances",
+    "hardware_abstraction",
+    "binary_flash_format",
+    "download_protocol",
+    "rink_geometry_presets",
+    "schemas",
+    "examples"
+  ],
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "hex_u8": {
+      "type": "string",
+      "pattern": "^0x[0-9A-Fa-f]{2}$"
+    },
+    "hex_u16": {
+      "type": "string",
+      "pattern": "^0x[0-9A-Fa-f]{4}$"
+    },
+    "hex_u32": {
+      "type": "string",
+      "pattern": "^0x[0-9A-Fa-f]{8}$"
+    },
+    "unit_spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit", "wire_type", "analytics_type", "operating_range", "tolerance"],
+      "properties": {
+        "unit": { "type": "string", "minLength": 1 },
+        "wire_type": { "type": "string", "minLength": 1 },
+        "analytics_type": { "type": "string", "minLength": 1 },
+        "operating_range": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "tolerance": { "type": "string", "minLength": 1 }
+      }
+    },
+    "rink_preset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "length_m",
+        "width_m",
+        "corner_radius_m",
+        "goal_line_from_boards_m",
+        "blue_line_from_boards_m",
+        "ice_plane_z_m",
+        "default_bench_gate_xy_m"
+      ],
+      "properties": {
+        "length_m": { "type": "number", "exclusiveMinimum": 0 },
+        "width_m": { "type": "number", "exclusiveMinimum": 0 },
+        "corner_radius_m": { "type": "number", "minimum": 0 },
+        "goal_line_from_boards_m": { "type": "number", "exclusiveMinimum": 0 },
+        "blue_line_from_boards_m": { "type": "number", "exclusiveMinimum": 0 },
+        "ice_plane_z_m": { "type": "number", "const": 0.0 },
+        "default_bench_gate_xy_m": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "flash_msg_type_spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["msg_type_hex", "msg_type_id", "schema_ref", "payload_bytes", "struct_format", "description"],
+      "properties": {
+        "msg_type_hex": { "$ref": "#/$defs/hex_u8" },
+        "msg_type_id": { "type": "integer", "minimum": 1, "maximum": 255 },
+        "schema_ref": { "type": "string", "minLength": 1 },
+        "payload_bytes": {
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "string", "minLength": 1 }
+          ]
+        },
+        "struct_format": { "type": "string", "minLength": 2 },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
+    "embedded_payload_schema": {
+      "type": "object",
+      "required": [
+        "$schema",
+        "title",
+        "type",
+        "additionalProperties",
+        "required",
+        "properties"
+      ],
+      "properties": {
+        "$schema": { "const": "https://json-schema.org/draft/2020-12/schema" },
+        "$id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "type": { "const": "object" },
+        "additionalProperties": { "const": false },
+        "required": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "properties": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "$defs": {
+          "type": "object"
+        },
+        "allOf": {
+          "type": "array"
+        }
+      }
+    }
+  },
+  "properties": {
+    "contract_version": { "$ref": "#/$defs/semver" },
+    "schema_standard": {
+      "const": "https://json-schema.org/draft/2020-12/schema"
+    },
+    "project": {
+      "const": "hockey_sensor"
+    },
+    "constants": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gravity_mps2",
+        "crc32_polynomial_reflected",
+        "crc32_init",
+        "crc32_xorout",
+        "sync_marker_u16",
+        "response_sync_marker_u16",
+        "session_magic",
+        "timestamp_width_bits",
+        "timestamp_type",
+        "gps_enabled",
+        "external_anchors_enabled"
+      ],
+      "properties": {
+        "gravity_mps2": { "const": 9.80665 },
+        "crc32_polynomial_reflected": { "const": "0xEDB88320" },
+        "crc32_init": { "const": "0xFFFFFFFF" },
+        "crc32_xorout": { "const": "0xFFFFFFFF" },
+        "sync_marker_u16": { "const": "0xAA55" },
+        "response_sync_marker_u16": { "const": "0x55AA" },
+        "session_magic": { "const": "HKS1" },
+        "timestamp_width_bits": { "type": "integer", "minimum": 64, "const": 64 },
+        "timestamp_type": { "const": "uint64_t" },
+        "gps_enabled": { "const": false },
+        "external_anchors_enabled": { "const": false }
+      }
+    },
+    "coordinate_frames": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handedness", "quaternion_convention", "frames"],
+      "properties": {
+        "handedness": { "const": "right-handed" },
+        "quaternion_convention": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "standard",
+            "order",
+            "components",
+            "direction",
+            "unit_norm_tolerance"
+          ],
+          "properties": {
+            "name": { "const": "q_WB" },
+            "standard": { "const": "Hamilton" },
+            "order": { "const": "scalar-first" },
+            "components": { "const": ["qw", "qx", "qy", "qz"] },
+            "direction": { "const": "active_body_to_world" },
+            "unit_norm_tolerance": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 0.0001
+            }
+          }
+        },
+        "frames": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["W", "B", "S"],
+          "properties": {
+            "W": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "name", "origin", "axes", "gravity_vector_mps2"],
+              "properties": {
+                "id": { "const": "W" },
+                "name": { "type": "string", "minLength": 1 },
+                "origin": { "type": "string", "minLength": 1 },
+                "axes": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["+X", "+Y", "+Z"],
+                  "properties": {
+                    "+X": { "type": "string", "minLength": 1 },
+                    "+Y": { "type": "string", "minLength": 1 },
+                    "+Z": { "type": "string", "minLength": 1 }
+                  }
+                },
+                "gravity_vector_mps2": { "const": [0.0, 0.0, -9.80665] }
+              }
+            },
+            "B": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "name", "origin", "axes", "identity_quaternion_q_WB"],
+              "properties": {
+                "id": { "const": "B" },
+                "name": { "type": "string", "minLength": 1 },
+                "origin": { "type": "string", "minLength": 1 },
+                "axes": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["+X", "+Y", "+Z"],
+                  "properties": {
+                    "+X": { "type": "string", "minLength": 1 },
+                    "+Y": { "type": "string", "minLength": 1 },
+                    "+Z": { "type": "string", "minLength": 1 }
+                  }
+                },
+                "identity_quaternion_q_WB": { "const": [1.0, 0.0, 0.0, 0.0] }
+              }
+            },
+            "S": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "name", "origin", "axes", "mapping_to_B", "canonical_R_BS", "orthogonality_det"],
+              "properties": {
+                "id": { "const": "S" },
+                "name": { "type": "string", "minLength": 1 },
+                "origin": { "type": "string", "minLength": 1 },
+                "axes": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["+X", "+Y", "+Z"],
+                  "properties": {
+                    "+X": { "type": "string", "minLength": 1 },
+                    "+Y": { "type": "string", "minLength": 1 },
+                    "+Z": { "type": "string", "minLength": 1 }
+                  }
+                },
+                "mapping_to_B": { "const": "R_BS" },
+                "canonical_R_BS": {
+                  "const": [
+                    [0.0, 0.0, 1.0],
+                    [0.0, -1.0, 0.0],
+                    [1.0, 0.0, 0.0]
+                  ]
+                },
+                "orthogonality_det": { "const": 1 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "units_and_tolerances": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gps_or_anchors_used",
+        "position",
+        "velocity",
+        "acceleration",
+        "angular_velocity",
+        "magnetic_flux",
+        "pressure",
+        "temperature",
+        "battery_voltage",
+        "timestamp",
+        "distance",
+        "shift_duration"
+      ],
+      "properties": {
+        "gps_or_anchors_used": { "const": false },
+        "position": { "$ref": "#/$defs/unit_spec" },
+        "velocity": { "$ref": "#/$defs/unit_spec" },
+        "acceleration": { "$ref": "#/$defs/unit_spec" },
+        "angular_velocity": { "$ref": "#/$defs/unit_spec" },
+        "magnetic_flux": { "$ref": "#/$defs/unit_spec" },
+        "pressure": { "$ref": "#/$defs/unit_spec" },
+        "temperature": { "$ref": "#/$defs/unit_spec" },
+        "battery_voltage": { "$ref": "#/$defs/unit_spec" },
+        "timestamp": { "$ref": "#/$defs/unit_spec" },
+        "distance": { "$ref": "#/$defs/unit_spec" },
+        "shift_duration": { "$ref": "#/$defs/unit_spec" }
+      }
+    },
+    "hardware_abstraction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deployment_mode",
+        "uses_gps",
+        "uses_external_anchors",
+        "system_voltage_v",
+        "min_battery_life_hours",
+        "enclosure_envelope_mm",
+        "mcu",
+        "pmic",
+        "battery",
+        "flash",
+        "sensors",
+        "buses"
+      ],
+      "properties": {
+        "deployment_mode": { "const": "chest_worn_anchor_free" },
+        "uses_gps": { "const": false },
+        "uses_external_anchors": { "const": false },
+        "system_voltage_v": { "const": 1.8 },
+        "min_battery_life_hours": { "type": "number", "minimum": 2.0 },
+        "enclosure_envelope_mm": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["length_mm", "width_mm", "thickness_mm", "mass_g", "ip_rating"],
+          "properties": {
+            "length_mm": { "type": "number", "exclusiveMinimum": 0, "maximum": 65.0 },
+            "width_mm": { "type": "number", "exclusiveMinimum": 0, "maximum": 45.0 },
+            "thickness_mm": { "type": "number", "exclusiveMinimum": 0, "maximum": 12.0 },
+            "mass_g": { "type": "number", "exclusiveMinimum": 0, "maximum": 40.0 },
+            "ip_rating": { "type": "string", "pattern": "^IP[0-9]{2}$" }
+          }
+        },
+        "mcu": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["part_number", "architecture", "usb_fs", "ble_phy"],
+          "properties": {
+            "part_number": { "type": "string", "minLength": 1 },
+            "architecture": { "type": "string", "minLength": 1 },
+            "usb_fs": { "type": "boolean", "const": true },
+            "ble_phy": { "type": "string", "minLength": 1 }
+          }
+        },
+        "pmic": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["part_number", "bus", "i2c_addr_hex", "jeita_ntc"],
+          "properties": {
+            "part_number": { "type": "string", "minLength": 1 },
+            "bus": { "type": "string", "minLength": 1 },
+            "i2c_addr_hex": { "$ref": "#/$defs/hex_u8" },
+            "jeita_ntc": { "type": "boolean", "const": true }
+          }
+        },
+        "battery": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["form_factor", "chemistry", "nominal_v", "capacity_mah"],
+          "properties": {
+            "form_factor": { "type": "string", "minLength": 1 },
+            "chemistry": { "type": "string", "minLength": 1 },
+            "nominal_v": { "type": "number", "exclusiveMinimum": 0 },
+            "capacity_mah": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        "flash": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["part_number", "capacity_mb", "bus", "page_bytes", "block_bytes", "usable_ring_blocks"],
+          "properties": {
+            "part_number": { "type": "string", "minLength": 1 },
+            "capacity_mb": { "type": "integer", "minimum": 32 },
+            "bus": { "type": "string", "minLength": 1 },
+            "page_bytes": { "type": "integer", "minimum": 256 },
+            "block_bytes": { "type": "integer", "minimum": 4096 },
+            "usable_ring_blocks": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "sensors": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["primary_imu", "high_g_imu", "magnetometer", "barometer"],
+          "properties": {
+            "primary_imu": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["part_number", "bus", "odr_hz", "accel_fs_g", "gyro_fs_dps"],
+              "properties": {
+                "part_number": { "type": "string", "minLength": 1 },
+                "bus": { "type": "string", "minLength": 1 },
+                "odr_hz": { "type": "integer", "minimum": 100 },
+                "accel_fs_g": { "type": "number", "minimum": 8 },
+                "gyro_fs_dps": { "type": "number", "minimum": 1000 }
+              }
+            },
+            "high_g_imu": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["part_number", "bus", "odr_hz", "accel_fs_g"],
+              "properties": {
+                "part_number": { "type": "string", "minLength": 1 },
+                "bus": { "type": "string", "minLength": 1 },
+                "odr_hz": { "type": "integer", "minimum": 400 },
+                "accel_fs_g": { "type": "number", "minimum": 100 }
+              }
+            },
+            "magnetometer": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["part_number", "bus", "i2c_addr_hex", "odr_hz", "fs_ut"],
+              "properties": {
+                "part_number": { "type": "string", "minLength": 1 },
+                "bus": { "type": "string", "minLength": 1 },
+                "i2c_addr_hex": { "$ref": "#/$defs/hex_u8" },
+                "odr_hz": { "type": "integer", "minimum": 10 },
+                "fs_ut": { "type": "number", "minimum": 400 }
+              }
+            },
+            "barometer": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["part_number", "bus", "i2c_addr_hex", "odr_hz"],
+              "properties": {
+                "part_number": { "type": "string", "minLength": 1 },
+                "bus": { "type": "string", "minLength": 1 },
+                "i2c_addr_hex": { "$ref": "#/$defs/hex_u8" },
+                "odr_hz": { "type": "integer", "minimum": 10 }
+              }
+            }
+          }
+        },
+        "buses": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "minLength": 1 },
+          "minProperties": 3
+        }
+      }
+    },
+    "binary_flash_format": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "endianness",
+        "frame_header_bytes",
+        "frame_crc_bytes",
+        "max_payload_bytes",
+        "crc_algorithm",
+        "crc_polynomial",
+        "sync_u16",
+        "timestamp_field",
+        "timestamp_type",
+        "timestamp_bits",
+        "header_fields",
+        "message_types"
+      ],
+      "properties": {
+        "endianness": { "const": "little" },
+        "frame_header_bytes": { "const": 20 },
+        "frame_crc_bytes": { "const": 4 },
+        "max_payload_bytes": { "type": "integer", "minimum": 256, "maximum": 4072 },
+        "crc_algorithm": { "const": "CRC32-IEEE" },
+        "crc_polynomial": { "const": "0xEDB88320" },
+        "sync_u16": { "const": "0xAA55" },
+        "timestamp_field": { "const": "timestamp_us" },
+        "timestamp_type": { "const": "uint64_t" },
+        "timestamp_bits": { "type": "integer", "minimum": 64, "const": 64 },
+        "header_fields": {
+          "type": "array",
+          "minItems": 7,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "c_type", "offset", "size"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "c_type": { "type": "string", "minLength": 1 },
+              "offset": { "type": "integer", "minimum": 0 },
+              "size": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        "message_types": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "SESSION_HEADER",
+            "IMU_BATCH",
+            "HIGH_G_BATCH",
+            "AUX_ENV",
+            "EVENT_MARKER",
+            "CALIBRATION_BLOCK",
+            "SESSION_FOOTER"
+          ],
+          "properties": {
+            "SESSION_HEADER": { "$ref": "#/$defs/flash_msg_type_spec" },
+            "IMU_BATCH": { "$ref": "#/$defs/flash_msg_type_spec" },
+            "HIGH_G_BATCH": { "$ref": "#/$defs/flash_msg_type_spec" },
+            "AUX_ENV": { "$ref": "#/$defs/flash_msg_type_spec" },
+            "EVENT_MARKER": { "$ref": "#/$defs/flash_msg_type_spec" },
+            "CALIBRATION_BLOCK": { "$ref": "#/$defs/flash_msg_type_spec" },
+            "SESSION_FOOTER": { "$ref": "#/$defs/flash_msg_type_spec" }
+          }
+        }
+      }
+    },
+    "download_protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "primary_transport",
+        "secondary_transport",
+        "endianness",
+        "crc_algorithm",
+        "request_sync_u16",
+        "response_sync_u16",
+        "max_chunk_bytes",
+        "commands",
+        "status_codes"
+      ],
+      "properties": {
+        "primary_transport": { "type": "string", "minLength": 1 },
+        "secondary_transport": { "type": "string", "minLength": 1 },
+        "endianness": { "const": "little" },
+        "crc_algorithm": { "const": "CRC32-IEEE" },
+        "request_sync_u16": { "const": "0xAA55" },
+        "response_sync_u16": { "const": "0x55AA" },
+        "max_chunk_bytes": { "type": "integer", "minimum": 256, "maximum": 4096 },
+        "commands": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "LIST_SESSIONS",
+            "GET_HEADER",
+            "READ_CHUNK",
+            "ACK_VERIFY",
+            "DELETE_SESSION",
+            "GET_DEVICE_STATUS",
+            "SET_UTC_TIME"
+          ],
+          "properties": {
+            "LIST_SESSIONS": { "$ref": "#/$defs/hex_u8" },
+            "GET_HEADER": { "$ref": "#/$defs/hex_u8" },
+            "READ_CHUNK": { "$ref": "#/$defs/hex_u8" },
+            "ACK_VERIFY": { "$ref": "#/$defs/hex_u8" },
+            "DELETE_SESSION": { "$ref": "#/$defs/hex_u8" },
+            "GET_DEVICE_STATUS": { "$ref": "#/$defs/hex_u8" },
+            "SET_UTC_TIME": { "$ref": "#/$defs/hex_u8" }
+          }
+        },
+        "status_codes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "OK",
+            "ERR_BAD_CRC",
+            "ERR_UNKNOWN_CMD",
+            "ERR_SESSION_NOT_FOUND",
+            "ERR_OFFSET_OUT_OF_RANGE",
+            "ERR_NOT_VERIFIED",
+            "ERR_FLASH_IO",
+            "ERR_BUSY_RECORDING",
+            "ERR_VERIFY_MISMATCH",
+            "ERR_INVALID_PARAM"
+          ],
+          "properties": {
+            "OK": { "$ref": "#/$defs/hex_u8" },
+            "ERR_BAD_CRC": { "$ref": "#/$defs/hex_u8" },
+            "ERR_UNKNOWN_CMD": { "$ref": "#/$defs/hex_u8" },
+            "ERR_SESSION_NOT_FOUND": { "$ref": "#/$defs/hex_u8" },
+            "ERR_OFFSET_OUT_OF_RANGE": { "$ref": "#/$defs/hex_u8" },
+            "ERR_NOT_VERIFIED": { "$ref": "#/$defs/hex_u8" },
+            "ERR_FLASH_IO": { "$ref": "#/$defs/hex_u8" },
+            "ERR_BUSY_RECORDING": { "$ref": "#/$defs/hex_u8" },
+            "ERR_VERIFY_MISMATCH": { "$ref": "#/$defs/hex_u8" },
+            "ERR_INVALID_PARAM": { "$ref": "#/$defs/hex_u8" }
+          }
+        }
+      }
+    },
+    "rink_geometry_presets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["NHL_200X85FT", "IIHF_60X30M", "CUSTOM"],
+      "properties": {
+        "NHL_200X85FT": { "$ref": "#/$defs/rink_preset" },
+        "IIHF_60X30M": { "$ref": "#/$defs/rink_preset" },
+        "CUSTOM": { "$ref": "#/$defs/rink_preset" }
+      }
+    },
+    "schemas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "calibration_block",
+        "flash_session_header",
+        "imu_batch_packet",
+        "high_g_batch_packet",
+        "aux_env_packet",
+        "event_marker_packet",
+        "flash_session_footer",
+        "download_command",
+        "download_response",
+        "analytics_trajectory_point",
+        "analytics_shift_summary",
+        "analytics_session_summary",
+        "analytics_report"
+      ],
+      "properties": {
+        "calibration_block": { "$ref": "#/$defs/embedded_payload_schema" },
+        "flash_session_header": { "$ref": "#/$defs/embedded_payload_schema" },
+        "imu_batch_packet": { "$ref": "#/$defs/embedded_payload_schema" },
+        "high_g_batch_packet": { "$ref": "#/$defs/embedded_payload_schema" },
+        "aux_env_packet": { "$ref": "#/$defs/embedded_payload_schema" },
+        "event_marker_packet": { "$ref": "#/$defs/embedded_payload_schema" },
+        "flash_session_footer": { "$ref": "#/$defs/embedded_payload_schema" },
+        "download_command": { "$ref": "#/$defs/embedded_payload_schema" },
+        "download_response": { "$ref": "#/$defs/embedded_payload_schema" },
+        "analytics_trajectory_point": { "$ref": "#/$defs/embedded_payload_schema" },
+        "analytics_shift_summary": { "$ref": "#/$defs/embedded_payload_schema" },
+        "analytics_session_summary": { "$ref": "#/$defs/embedded_payload_schema" },
+        "analytics_report": { "$ref": "#/$defs/embedded_payload_schema" }
+      }
+    },
+    "examples": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "calibration_block",
+        "flash_session_header",
+        "imu_batch_packet",
+        "high_g_batch_packet",
+        "aux_env_packet",
+        "event_marker_packet",
+        "flash_session_footer",
+        "download_command",
+        "download_response",
+        "analytics_trajectory_point",
+        "analytics_shift_summary",
+        "analytics_session_summary",
+        "analytics_report"
+      ],
+      "properties": {
+        "calibration_block": { "type": "object" },
+        "flash_session_header": { "type": "object" },
+        "imu_batch_packet": { "type": "object" },
+        "high_g_batch_packet": { "type": "object" },
+        "aux_env_packet": { "type": "object" },
+        "event_marker_packet": { "type": "object" },
+        "flash_session_footer": { "type": "object" },
+        "download_command": { "type": "object" },
+        "download_response": { "type": "object" },
+        "analytics_trajectory_point": { "type": "object" },
+        "analytics_shift_summary": { "type": "object" },
+        "analytics_session_summary": { "type": "object" },
+        "analytics_report": { "type": "object" }
+      }
+    }
+  }
+}
