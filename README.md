@@ -16,10 +16,13 @@ Production-grade hardware, firmware, and host sensor-fusion suite for a discrete
 ### 1. Chest-Worn Enclosure Concept (`52.0 × 36.0 × 10.5 mm`, `24.0 g`, IP67)
 ![Chest-Worn Enclosure Concept Render](docs/plots/enclosure_concept_render.jpg)
 
-### 2. Populated 4-Layer PCBA Concept (`38.0 × 28.0 × 0.80 mm`)
+### 2. Exploded Assembly Stack-Up (`BT1` 502535 450 mAh LiPo Battery Underneath PCBA)
+![Exploded Battery & PCBA Stack-Up Render](docs/plots/exploded_battery_stackup_render.jpg)
+
+### 3. Populated 4-Layer PCBA Concept (`38.0 × 28.0 × 0.80 mm`)
 ![Populated PCBA Concept Render](docs/plots/pcba_concept_render.jpg)
 
-### 3. Bare 4-Layer FR4 ENIG PCB Concept & KiCad 3D Raytraced Layout
+### 4. Bare 4-Layer FR4 ENIG PCB Concept & KiCad 3D Raytraced Layout
 | Bare 4-Layer PCB Concept | KiCad 3D Raytraced Routed PCB |
 | :---: | :---: |
 | ![Bare PCB Concept Render](docs/plots/pcb_concept_render.jpg) | ![KiCad 3D Raytraced PCB](docs/plots/kicad_3d_pcb_render.png) |
