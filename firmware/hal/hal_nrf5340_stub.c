@@ -327,7 +327,13 @@ bool hks_hal_button_pressed(void) {
 }
 
 void hks_hal_led_set(uint8_t color_mask) {
-    (void)color_mask;
+    /* LD1 = Green (P1.07 -> Q1A G1), LD2 = Red (P1.08 -> Q1B G2); AMBER drives both LD1+LD2 */
+    const bool green_on = ((color_mask & (uint8_t)HKS_LED_GREEN) != 0u) ||
+                          ((color_mask & (uint8_t)HKS_LED_AMBER) != 0u);
+    const bool red_on   = ((color_mask & (uint8_t)HKS_LED_RED) != 0u) ||
+                          ((color_mask & (uint8_t)HKS_LED_AMBER) != 0u);
+    (void)green_on;
+    (void)red_on;
     (void)HKS_PIN_LED_GREEN;
     (void)HKS_PIN_LED_RED;
 }

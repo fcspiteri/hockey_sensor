@@ -70,6 +70,7 @@ NET_LIST: list[str] = [
     "GND",
     "VBUS_5V",
     "VBAT",
+    "VSYS",
     "VDD_1V8",
     "VDD_3V0",
     "SW1_BUCK1",
@@ -83,6 +84,9 @@ NET_LIST: list[str] = [
     "USB_CC1",
     "USB_CC2",
     "DECUSB",
+    "DECD",
+    "DECR",
+    "DECA",
     "NRF_DCCD",
     "NRF_DCC",
     "HFXO_XC1",
@@ -203,6 +207,19 @@ def _ic_quad_pads(
 
 
 def build_placements() -> list[ComponentPlacement]:
+    # U1: nRF5340-QKAA aQFN-94 (explicit ball-mapped outer ring 1..48 + EP)
+    # Ball mapping documented in hardware/ee/pinmux_and_buses.json:
+    #   1=N1(XL1/P0.00), 2=R1(XL2/P0.01), 3=V2(P0.04/IMU_INT1), 4=Y2(P0.05/IMU_INT2),
+    #   5=AB2(P0.06/ADXL_INT1), 6=AD2(P0.07/ADXL_INT2), 7=AH2(P0.08/SPI4_SCK), 8=AJ1(P0.09/SPI4_MOSI),
+    #   9=AK2(P0.10/SPI4_MISO), 10=AK4(P0.11/SPI4_CS_IMU_N), 11=AL5(P0.13/QSPI_IO0), 12=AK8(P0.14/QSPI_IO1),
+    #   13=AK10(P0.15/QSPI_IO2), 14=AL9(P0.16/QSPI_IO3), 15=AK12(P0.17/QSPI_SCK), 16=AK14(P0.18/QSPI_CS_N),
+    #   17=AL15(P0.19/SPI1_SCK), 18=AK16(P0.20/SPI1_MOSI), 19=AK18(P0.21/SPI1_MISO), 20=AL17(P0.22/SPI1_CS_HIGHG_N),
+    #   21=AK20(P0.23/I2C2_SDA), 22=AL27(P0.24/I2C2_SCL), 23=P2(P1.01/MAG_INT_1V8), 24=AL29(P1.02/I2C0_SDA_1V8),
+    #   25=AK28(P1.03/I2C0_SCL_1V8), 26=AL19(P1.04/BARO_INT), 27=AK22(P1.05/PMIC_INT), 28=AL21(P1.06/BTN_USER_N),
+    #   29=AK24(P1.07/LED_G_GATE), 30=AL23(P1.08/LED_R_GATE), 31=B2(USB_D_P), 32=B4(USB_D_N),
+    #   33=A5(VBUS_5V), 34=B6(DECUSB), 35=B10(DCCD), 36=A21(DCC), 37=C31(XC1), 38=B30(XC2),
+    #   39=L31(ANT), 40=AA31(SWDIO), 41=W31(SWDCLK), 42=AC31(NRESET),
+    #   43=B8(DECD), 44=A19(DECR), 45=B28(DECA), 46=A9(VDD_1V8), 47=AD30(VDD_1V8), 48=B12(GND), EP=VSS(GND)
     u1_nets = {
         "1": "LFXO_XL1_P0.00",
         "2": "LFXO_XL2_P0.01",
@@ -246,91 +263,124 @@ def build_placements() -> list[ComponentPlacement]:
         "40": "SWDIO",
         "41": "SWDCLK",
         "42": "NRESET",
-        "43": "VDD_1V8",
-        "44": "GND",
-        "45": "VDD_1V8",
-        "46": "GND",
+        "43": "DECD",
+        "44": "DECR",
+        "45": "DECA",
+        "46": "VDD_1V8",
         "47": "VDD_1V8",
         "48": "GND",
     }
+    # U2: nPM1300-QEAA-R QFN-32 (complete 32-pin + EP mapping including VSYS, PVDD1, PVDD2, VBUSOUT, AVSS, PGND1/2)
     u2_nets = {
         "1": "VBUS_5V",
-        "2": "VBAT",
-        "3": "PMIC_NTC",
-        "4": "PMIC_SHPHLD",
-        "5": "SW1_BUCK1",
-        "6": "VDD_1V8",
-        "7": "PMIC_VSET1",
-        "8": "SW2_BUCK2",
-        "9": "VDD_3V0",
-        "10": "PMIC_VSET2",
-        "11": "I2C2_PMIC_SDA_P0.23",
-        "12": "I2C2_PMIC_SCL_P0.24",
-        "13": "PMIC_INT_P1.05",
-        "14": "GND",
-        "15": "VDD_1V8",
-        "16": "GND",
-    }
-    u3_nets = {
-        "1": "VDD_1V8",
-        "2": "SPI4_SCK_P0.08",
-        "3": "SPI4_MOSI_P0.09",
-        "4": "SPI4_MISO_P0.10",
-        "5": "SPI4_CS_IMU_N_P0.11",
-        "6": "IMU_INT1_P0.04",
-        "7": "IMU_INT2_P0.05",
-        "8": "VDD_1V8",
-        "9": "GND",
-        "10": "GND",
-        "11": "GND",
-        "12": "VDD_1V8",
+        "2": "VBUS_5V",
+        "3": "VBAT",
+        "4": "PMIC_NTC",
+        "5": "VSYS",
+        "6": "VSYS",
+        "7": "SW1_BUCK1",
+        "8": "GND",
+        "9": "VDD_1V8",
+        "10": "PMIC_VSET1",
+        "11": "PMIC_VSET2",
+        "12": "VDD_3V0",
         "13": "GND",
-        "14": "GND",
+        "14": "SW2_BUCK2",
+        "15": "VSYS",
+        "16": "GND",
+        "17": "PMIC_SHPHLD",
+        "18": "VDD_1V8",
+        "19": "I2C2_PMIC_SDA_P0.23",
+        "20": "I2C2_PMIC_SCL_P0.24",
+        "21": "PMIC_INT_P1.05",
+        "22": "GND",
+        "23": "GND",
+        "24": "GND",
+        "25": "GND",
+        "26": "GND",
+        "27": "GND",
+        "28": "GND",
+        "29": "VDD_1V8",
+        "30": "VDD_3V0",
+        "31": "VSYS",
+        "32": "VBAT",
     }
+    # U3: ICM-42688-P LGA-14 (Exact TDK DS-000347 Table 11 Pinout)
+    #   1=NC(GND), 2=NC(GND), 3=NC(GND), 4=INT1, 5=VDDIO, 6=GND, 7=RESV(GND),
+    #   8=VDD, 9=INT2, 10=OCS_N(VDDIO), 11=OSDO(GND), 12=CS(SPI4_CS_IMU_N), 13=SCLK, 14=SDI/MOSI, 7->SDO/MISO on 1
+    # Note: Per TDK ICM-42688-P DS-000347: Pin 1=SDO/AD0 (4-wire SPI MISO), Pin 4=INT1, Pin 5=VDDIO,
+    # Pin 6=GND, Pin 7=RESV(GND), Pin 8=VDD, Pin 9=INT2, Pin 10=OCS_N(VDDIO), Pin 11=OSDO(GND),
+    # Pin 12=AP_CS, Pin 13=AP_SCLK, Pin 14=AP_SDI
+    u3_nets = {
+        "1": "SPI4_MISO_P0.10",
+        "2": "GND",
+        "3": "GND",
+        "4": "IMU_INT1_P0.04",
+        "5": "VDD_1V8",
+        "6": "GND",
+        "7": "GND",
+        "8": "VDD_1V8",
+        "9": "IMU_INT2_P0.05",
+        "10": "VDD_1V8",
+        "11": "GND",
+        "12": "SPI4_CS_IMU_N_P0.11",
+        "13": "SPI4_SCK_P0.08",
+        "14": "SPI4_MOSI_P0.09",
+    }
+    # U4: ADXL372BCCZ-RL7 LGA-16 (Exact Analog Devices ADXL372 Datasheet Table 5 Pinout)
+    #   1=VDDIO, 2=BYP(VDD_1V8/cap), 3=RESERVED(GND), 4=SCLK, 5=GND, 6=MOSI, 7=MISO,
+    #   8=CS_N, 9=INT2, 10=RESV(GND), 11=INT1, 12=GND, 13=GND, 14=Vs(VDD_1V8), 15=GND, 16=VDDIO
     u4_nets = {
         "1": "VDD_1V8",
         "2": "VDD_1V8",
-        "3": "SPI1_CS_HIGHG_N_P0.22",
+        "3": "GND",
         "4": "SPI1_SCK_P0.19",
-        "5": "SPI1_MOSI_P0.20",
-        "6": "SPI1_MISO_P0.21",
-        "7": "ADXL_INT1_P0.06",
-        "8": "ADXL_INT2_P0.07",
-        "9": "GND",
+        "5": "GND",
+        "6": "SPI1_MOSI_P0.20",
+        "7": "SPI1_MISO_P0.21",
+        "8": "SPI1_CS_HIGHG_N_P0.22",
+        "9": "ADXL_INT2_P0.07",
         "10": "GND",
-        "11": "GND",
-        "12": "VDD_1V8",
+        "11": "ADXL_INT1_P0.06",
+        "12": "GND",
         "13": "GND",
-        "14": "GND",
+        "14": "VDD_1V8",
         "15": "GND",
-        "16": "GND",
+        "16": "VDD_1V8",
     }
+    # U5: MMC5983MA LGA-16 (Exact MEMSIC MMC5983MA Datasheet Pinout)
+    #   1=SCL/SPC, 2=VDD, 3=NC(GND), 4=CS(tied to VDD_3V0 for I2C mode), 5=SDA/SDI,
+    #   6=SDO(GND), 7=NC(GND), 8=NC(GND), 9=GND, 10=CAP(VDD_3V0), 11=GND, 12=NC(GND),
+    #   13=VDDIO, 14=NC(GND), 15=INT, 16=NC(GND)
     u5_nets = {
         "1": "I2C0_SCL_3V0",
         "2": "VDD_3V0",
         "3": "GND",
         "4": "VDD_3V0",
         "5": "I2C0_SDA_3V0",
-        "6": "VDD_3V0",
+        "6": "GND",
         "7": "GND",
-        "8": "MAG_INT_3V0",
+        "8": "GND",
         "9": "GND",
         "10": "VDD_3V0",
         "11": "GND",
         "12": "GND",
         "13": "VDD_3V0",
         "14": "GND",
-        "15": "GND",
+        "15": "MAG_INT_3V0",
         "16": "GND",
     }
+    # U6: BMP581 LGA-10 (Exact Bosch BMP581 Datasheet Table 23 Pinout)
+    #   1=VDDIO, 2=SCK/SCL, 3=VSS(GND), 4=SDI/SDA, 5=SDO(tied to VDD_1V8 for I2C addr 0x47),
+    #   6=CSB(tied to VDD_1V8 for I2C mode), 7=INT, 8=VSS(GND), 9=VSS(GND), 10=VDD
     u6_nets = {
         "1": "VDD_1V8",
         "2": "I2C0_SCL_1V8_P1.03",
-        "3": "I2C0_SDA_1V8_P1.02",
-        "4": "VDD_1V8",
-        "5": "BARO_INT_P1.04",
+        "3": "GND",
+        "4": "I2C0_SDA_1V8_P1.02",
+        "5": "VDD_1V8",
         "6": "VDD_1V8",
-        "7": "GND",
+        "7": "BARO_INT_P1.04",
         "8": "GND",
         "9": "GND",
         "10": "VDD_1V8",
@@ -375,12 +425,15 @@ def build_placements() -> list[ComponentPlacement]:
         "9": "USB_D_N",
         "10": "USB_D_P",
     }
+    # Q1: NTZD3154NT1G Dual N-MOSFET SOT-563 (Exact onsemi NTZD3154N Datasheet Pinout)
+    #   Pin 1=S1(GND), Pin 2=G1(LED_G_GATE_P1.07), Pin 3=D2(LED_R_CATHODE),
+    #   Pin 4=S2(GND), Pin 5=G2(LED_R_GATE_P1.08), Pin 6=D1(LED_G_CATHODE)
     q1_nets = {
-        "1": "LED_G_GATE_P1.07",
-        "2": "GND",
-        "3": "LED_R_GATE_P1.08",
-        "4": "LED_R_CATHODE",
-        "5": "GND",
+        "1": "GND",
+        "2": "LED_G_GATE_P1.07",
+        "3": "LED_R_CATHODE",
+        "4": "GND",
+        "5": "LED_R_GATE_P1.08",
         "6": "LED_G_CATHODE",
     }
 
@@ -419,7 +472,7 @@ def build_placements() -> list[ComponentPlacement]:
             dnp=False,
             category="PMIC",
             rail="3.7V/1.8V/3.0V",
-            pads=_ic_quad_pads(4, 4.8, 0.8, 0.65, 0.30, u2_nets, ep_net="GND", ep_size=3.0),
+            pads=_ic_quad_pads(8, 4.8, 0.5, 0.55, 0.25, u2_nets, ep_net="GND", ep_size=3.0),
             notes="Dual-buck PMIC (BUCK1=1.8V, BUCK2=3.0V) + JEITA LiPo charger + fuel gauge",
         ),
         # Sensor Frame S Aligned Triad (Centered away from M1.4 corner screws and inductors!)
@@ -589,13 +642,15 @@ def build_placements() -> list[ComponentPlacement]:
                 ("A5", -1.2, -2.5, 0.3, 1.1, "USB_CC1"),
                 ("A6", -0.4, -2.5, 0.3, 1.1, "USB_D_P"),
                 ("A7", 0.4, -2.5, 0.3, 1.1, "USB_D_N"),
+                ("B7", -0.4, -0.8, 0.3, 1.0, "USB_D_N"),
+                ("B6", 0.4, -0.8, 0.3, 1.0, "USB_D_P"),
                 ("B5", 1.2, -2.5, 0.3, 1.1, "USB_CC2"),
                 ("B4", 2.2, -2.5, 0.4, 1.1, "VBUS_5V"),
                 ("B1", 3.2, -2.5, 0.4, 1.1, "GND"),
                 ("S1", -4.3, 0.0, 1.0, 1.8, "GND"),
                 ("S2", 4.3, 0.0, 1.0, 1.8, "GND"),
             ),
-            notes="IP67 mid-mount waterproof USB-C receptacle at -X_S bottom edge",
+            notes="IP67 mid-mount waterproof USB-C receptacle at -X_S bottom edge (A6/B6=D+, A7/B7=D-)",
         ),
         ComponentPlacement(
             refdes="J2",
@@ -605,8 +660,8 @@ def build_placements() -> list[ComponentPlacement]:
             footprint="Connector:Tag-Connect_TC2050-IDC-NL_2x05_P1.27mm_Vertical",
             pkg_w_mm=6.0,
             pkg_l_mm=3.0,
-            xs_mm=15.5,
-            ys_mm=-7.5,
+            xs_mm=16.0,
+            ys_mm=-6.2,
             rot_deg=0.0,
             layer="F.Cu",
             dnp=True,
@@ -618,9 +673,10 @@ def build_placements() -> list[ComponentPlacement]:
                 ("3", 0.0, -0.635, 0.78, 0.78, "GND"),
                 ("4", 1.27, -0.635, 0.78, 0.78, "SWDCLK"),
                 ("5", 2.54, -0.635, 0.78, 0.78, "GND"),
+                ("9", 1.27, 0.635, 0.78, 0.78, "GND"),
                 ("10", 2.54, 0.635, 0.78, 0.78, "NRESET"),
             ),
-            notes="Zero-profile SWD factory programming & debug footprint (no part installed)",
+            notes="Zero-profile SWD factory programming & debug footprint (pins 3, 5, 9 tied to GND)",
         ),
         ComponentPlacement(
             refdes="A1",
@@ -630,15 +686,18 @@ def build_placements() -> list[ComponentPlacement]:
             footprint="RF_Antenna:Johanson_2450AT18B100",
             pkg_w_mm=3.2,
             pkg_l_mm=1.6,
-            xs_mm=16.5,
-            ys_mm=10.0,
+            xs_mm=17.5,
+            ys_mm=10.5,
             rot_deg=0.0,
             layer="F.Cu",
             dnp=False,
             category="RF",
             rail="RF_50R",
-            pads=_two_pad("RF_ANT_FEED", "GND", pitch=2.6, pw=0.8, ph=1.4),
-            notes="2.4 GHz BLE 5.3 ceramic chip antenna inside 8.0x8.0 mm 4-layer copper keepout",
+            pads=(
+                ("1", -1.3, 0.0, 0.8, 1.4, "RF_ANT_FEED"),
+                ("2", 1.3, 0.0, 0.8, 1.4, ""),
+            ),
+            notes="2.4 GHz BLE 5.3 ceramic chip antenna at top-right board edge inside 8.0x8.0 mm keepout (Pad 1=50R Feed, Pad 2=Isolated Mechanical Anchor NC per Johanson datasheet)",
         ),
         ComponentPlacement(
             refdes="Y1",
@@ -648,8 +707,8 @@ def build_placements() -> list[ComponentPlacement]:
             footprint="Crystal:Crystal_SMD_2016-4Pin_2.0x1.6mm",
             pkg_w_mm=2.0,
             pkg_l_mm=1.6,
-            xs_mm=13.5,
-            ys_mm=1.5,
+            xs_mm=15.0,
+            ys_mm=-1.0,
             rot_deg=0.0,
             layer="F.Cu",
             dnp=False,
@@ -671,8 +730,8 @@ def build_placements() -> list[ComponentPlacement]:
             footprint="Crystal:Crystal_SMD_2012-2Pin_2.0x1.2mm",
             pkg_w_mm=2.0,
             pkg_l_mm=1.2,
-            xs_mm=13.5,
-            ys_mm=-2.0,
+            xs_mm=13.0,
+            ys_mm=-4.2,
             rot_deg=0.0,
             layer="F.Cu",
             dnp=False,
@@ -834,15 +893,15 @@ def build_placements() -> list[ComponentPlacement]:
             footprint="Inductor_SMD:L_0603_1608Metric",
             pkg_w_mm=1.6,
             pkg_l_mm=0.8,
-            xs_mm=8.5,
+            xs_mm=7.5,
             ys_mm=-9.0,
             rot_deg=0.0,
             layer="F.Cu",
             dnp=False,
             category="Inductor",
             rail="1.8V",
-            pads=_two_pad("NRF_DCCD", "VDD_1V8", pitch=1.5, pw=0.7, ph=0.8),
-            notes="10 uH 0603 inductor for nRF5340 VREGMAIN (DCCD, Ball B10)",
+            pads=_two_pad("NRF_DCCD", "DECD", pitch=1.5, pw=0.7, ph=0.8),
+            notes="10 uH 0603 inductor for nRF5340 VREGMAIN (DCCD -> DECD)",
         ),
         ComponentPlacement(
             refdes="L4",
@@ -852,15 +911,15 @@ def build_placements() -> list[ComponentPlacement]:
             footprint="Inductor_SMD:L_0603_1608Metric",
             pkg_w_mm=1.6,
             pkg_l_mm=0.8,
-            xs_mm=10.2,
+            xs_mm=11.0,
             ys_mm=-9.0,
-            rot_deg=0.0,
+            rot_deg=90.0,
             layer="F.Cu",
             dnp=False,
             category="Inductor",
             rail="1.8V",
-            pads=_two_pad("NRF_DCC", "VDD_1V8", pitch=1.5, pw=0.7, ph=0.8),
-            notes="10 uH 0603 inductor for nRF5340 VREGRADIO (DCC, Ball A21)",
+            pads=_two_pad("NRF_DCC", "DECR", pitch=1.5, pw=0.7, ph=0.8),
+            notes="10 uH 0603 inductor for nRF5340 VREGRADIO (DCC -> DECR, orthogonal 90 deg & >3.5 mm spacing from L3)",
         ),
         ComponentPlacement(
             refdes="C27",
@@ -870,15 +929,15 @@ def build_placements() -> list[ComponentPlacement]:
             footprint="Capacitor_SMD:C_0402_1005Metric",
             pkg_w_mm=1.0,
             pkg_l_mm=0.5,
-            xs_mm=12.0,
-            ys_mm=3.5,
+            xs_mm=12.8,
+            ys_mm=2.2,
             rot_deg=0.0,
             layer="F.Cu",
             dnp=False,
             category="Capacitor",
             rail="RF_50R",
             pads=_two_pad("RF_ANT_OUT", "RF_MATCH_MID", pitch=0.9, pw=0.5, ph=0.5),
-            notes="C_RF1: 1.2 pF series RF matching capacitor",
+            notes="C_RF1: 1.2 pF series RF matching capacitor right at U1 ANT exit",
         ),
         ComponentPlacement(
             refdes="L5",
@@ -888,15 +947,15 @@ def build_placements() -> list[ComponentPlacement]:
             footprint="Inductor_SMD:L_0402_1005Metric",
             pkg_w_mm=1.0,
             pkg_l_mm=0.5,
-            xs_mm=12.0,
-            ys_mm=5.2,
+            xs_mm=13.7,
+            ys_mm=3.8,
             rot_deg=90.0,
             layer="F.Cu",
             dnp=False,
             category="Inductor",
             rail="RF_50R",
             pads=_two_pad("RF_MATCH_MID", "GND", pitch=0.9, pw=0.5, ph=0.5),
-            notes="2.7 nH shunt RF matching inductor",
+            notes="2.7 nH shunt RF matching inductor at GND plane edge before 8x8mm keepout",
         ),
         ComponentPlacement(
             refdes="L6",
@@ -906,15 +965,15 @@ def build_placements() -> list[ComponentPlacement]:
             footprint="Inductor_SMD:L_0402_1005Metric",
             pkg_w_mm=1.0,
             pkg_l_mm=0.5,
-            xs_mm=13.5,
-            ys_mm=6.8,
+            xs_mm=12.8,
+            ys_mm=5.2,
             rot_deg=0.0,
             layer="F.Cu",
             dnp=False,
             category="Inductor",
             rail="RF_50R",
             pads=_two_pad("RF_MATCH_MID", "RF_ANT_FEED", pitch=0.9, pw=0.5, ph=0.5),
-            notes="3.3 nH series RF matching inductor to A1 feed",
+            notes="3.3 nH series RF matching inductor feeding 50R GCPW into 8x8mm keepout to A1 Pad 1",
         ),
         ComponentPlacement(
             refdes="RT1",
@@ -970,7 +1029,7 @@ def build_placements() -> list[ComponentPlacement]:
         ("R8", "4.7k_I2C2_SCL", "ERJ-2GEJ472X", -2.8, -2.2, "I2C2_PMIC_SCL_P0.24", "VDD_1V8", "1.8V", "TWIM2 PMIC SCL PU"),
         ("R9", "10k_CS_IMU", "ERJ-2GEJ103X", 3.5, -1.5, "SPI4_CS_IMU_N_P0.11", "VDD_1V8", "1.8V", "ICM-42688 CS PU"),
         ("R10", "10k_CS_HIGHG", "ERJ-2GEJ103X", 2.2, 5.0, "SPI1_CS_HIGHG_N_P0.22", "VDD_1V8", "1.8V", "ADXL372 CS PU"),
-        ("R11", "10k_CS_FLASH", "ERJ-2GEJ103X", 5.8, -8.0, "QSPI_CS_N_P0.18", "VDD_1V8", "1.8V", "W25N01JW CS PU"),
+        ("R11", "10k_CS_FLASH", "ERJ-2GEJ103X", 4.6, -11.5, "QSPI_CS_N_P0.18", "VDD_1V8", "1.8V", "W25N01JW CS PU"),
         ("R12", "100k_GATE_G", "ERJ-2GEJ104X", -10.8, 11.2, "LED_G_GATE_P1.07", "GND", "1.8V", "Q1A gate pulldown"),
         ("R13", "100k_GATE_R", "ERJ-2GEJ104X", -11.8, 11.2, "LED_R_GATE_P1.08", "GND", "1.8V", "Q1B gate pulldown"),
         ("R14", "100k_BTN_PU", "ERJ-2GEJ104X", -8.6, 4.5, "BTN_USER_N_P1.06", "VDD_1V8", "1.8V", "P1.06 1.8V button PU"),
@@ -1002,16 +1061,16 @@ def build_placements() -> list[ComponentPlacement]:
             )
         )
 
-    # Bulk, Buck & VBUS 0603 Capacitors (C19..C26)
+    # Bulk, Buck & VBUS 0603 Capacitors (C19..C26: 1x 25V VBUS, 2x 10uF BUCK, 5x 4.7uF 10V DEC/VDD matching bom.csv!)
     cap_0603_specs = [
         ("C19", "4.7uF_25V_VBUS", "GRM188R61E475KE11D", -12.8, -6.2, "VBUS_5V", "GND", "VBUS_5V", "C_VBUS: 25V X5R VBUSIN cap"),
         ("C20", "10uF_6.3V_BUCK1", "GRM188R60J106ME47D", -3.0, -11.5, "VDD_1V8", "GND", "1.8V", "C_BUCK1: BUCK1 1.8V output cap"),
         ("C21", "10uF_6.3V_BUCK2", "GRM188R60J106ME47D", -13.6, -10.5, "VDD_3V0", "GND", "3.0V", "C_BUCK2: BUCK2 3.0V output cap"),
         ("C22", "4.7uF_10V_DECUSB", "GRM188R61A475KE15D", 8.5, 1.5, "DECUSB", "GND", "DECUSB", "nRF5340 DECUSB 4.7uF"),
         ("C23", "4.7uF_10V_VDD", "GRM188R61A475KE15D", 10.5, 1.5, "VDD_1V8", "GND", "1.8V", "nRF5340 VDD bulk"),
-        ("C24", "4.7uF_10V_DECD", "GRM188R61A475KE15D", 6.8, -9.0, "VDD_1V8", "GND", "1.8V", "nRF5340 DECD bulk"),
-        ("C25", "4.7uF_10V_DECR", "GRM188R61A475KE15D", 11.8, -9.0, "VDD_1V8", "GND", "1.8V", "nRF5340 DECR bulk"),
-        ("C26", "4.7uF_10V_NAND", "GRM188R61A475KE15D", -4.8, -7.2, "VDD_1V8", "GND", "1.8V", "W25N01JW NAND bulk"),
+        ("C24", "4.7uF_10V_DECD", "GRM188R61A475KE15D", 6.2, -9.0, "DECD", "GND", "1.8V", "nRF5340 DECD output cap for L3 (DCCD)"),
+        ("C25", "4.7uF_10V_DECR", "GRM188R61A475KE15D", 12.8, -9.0, "DECR", "GND", "1.8V", "nRF5340 DECR output cap for L4 (DCC)"),
+        ("C26", "4.7uF_10V_DECA", "GRM188R61A475KE15D", -4.8, -7.2, "DECA", "GND", "1.8V", "nRF5340 DECA regulator decoupling cap"),
     ]
     for c_ref, c_val, c_mpn, cx, cy, n1, n2, rail, note in cap_0603_specs:
         comps.append(
@@ -1315,15 +1374,18 @@ def write_kicad_sch(path: Path, comps: list[ComponentPlacement]) -> None:
             '    )',
             '  )',
         ])
-        # Emit wire stub + net label for each pin
+        # Emit wire stub + net label for each pin (or no_connect marker for NC pins)
         for idx, (pnum, _dx, _dy, _pw, _ph, pnet) in enumerate(c.pads):
-            if not pnet:
-                continue
             side_x = -7.62 if idx % 2 == 0 else 7.62
             py_lib = round(box_h - 2.54 - (idx // 2) * 2.54, 2)
             # In schematic sheet coords, +Y is down so y_sheet = sy - py_lib
             px_sheet = round(sx + side_x, 2)
             py_sheet = round(sy - py_lib, 2)
+            if not pnet:
+                lines.append(
+                    f'  (no_connect (at {px_sheet:.2f} {py_sheet:.2f}) (uuid "{_det_uuid(f"nc:{c.refdes}:{pnum}")}"))'
+                )
+                continue
             wx_end = round(px_sheet - 5.08 if idx % 2 == 0 else px_sheet + 5.08, 2)
             lbl_ang = 180 if idx % 2 == 0 else 0
             just = "right" if idx % 2 == 0 else "left"
@@ -1502,11 +1564,24 @@ def write_kicad_pcb(path: Path, comps: list[ComponentPlacement]) -> None:
             )
         lines.append('  )')
 
-    # 5. 5.5 x 4.5 mm All-Layer (L1-L4) RF Keepout Rule Area at Top-Right Corner (+X_S, +Y_S) under A1
-    kx0 = x1 - 5.5  # 138.5
+    # 5. Pre-routed 50-Ohm GCPW RF feed on F.Cu + 8.0 x 8.0 mm All-Layer (L1-L4) RF Keepout Rule Area at Top-Right Corner (+X_S, +Y_S) under A1
+    rf_out_id = NET_TO_ID["RF_ANT_OUT"]
+    rf_mid_id = NET_TO_ID["RF_MATCH_MID"]
+    rf_feed_id = NET_TO_ID["RF_ANT_FEED"]
+    lines.extend([
+        f'  (segment (start 128.075 88.100) (end 128.075 87.200) (width 0.200) (layer "F.Cu") (net {rf_out_id}) (uuid "{_det_uuid("rf_seg_1")}"))',
+        f'  (segment (start 128.075 87.200) (end 131.750 87.200) (width 0.200) (layer "F.Cu") (net {rf_out_id}) (uuid "{_det_uuid("rf_seg_2")}"))',
+        f'  (segment (start 132.650 87.200) (end 133.800 87.200) (width 0.200) (layer "F.Cu") (net {rf_mid_id}) (uuid "{_det_uuid("rf_seg_3")}"))',
+        f'  (segment (start 133.800 87.200) (end 133.800 86.750) (width 0.200) (layer "F.Cu") (net {rf_mid_id}) (uuid "{_det_uuid("rf_seg_4")}"))',
+        f'  (segment (start 133.800 87.200) (end 134.750 87.200) (width 0.200) (layer "F.Cu") (net {rf_mid_id}) (uuid "{_det_uuid("rf_seg_5")}"))',
+        f'  (segment (start 135.650 87.200) (end 139.200 87.200) (width 0.200) (layer "F.Cu") (net {rf_feed_id}) (uuid "{_det_uuid("rf_seg_6")}"))',
+        f'  (segment (start 139.200 87.200) (end 139.200 82.500) (width 0.200) (layer "F.Cu") (net {rf_feed_id}) (uuid "{_det_uuid("rf_seg_7")}"))',
+    ])
+
+    kx0 = x1 - 8.0  # 136.0
     kx1 = x1        # 144.0
     ky0 = y0        # 81.0
-    ky1 = y0 + 4.5  # 85.5
+    ky1 = y0 + 8.0  # 89.0
     lines.extend([
         '  (zone',
         '    (net 0)',

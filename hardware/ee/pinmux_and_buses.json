@@ -245,7 +245,7 @@
       "active": "rising",
       "max_freq_hz": 200,
       "near_radio": false,
-      "function": "ICM-42688-P INT1 FIFO watermark (20 samples @ 10 Hz)"
+      "function": "ICM-42688-P INT1 FIFO watermark (20 samples @ 10 Hz; INT_CONFIG=0x1B programs INT1/INT2 push-pull active-high at init)"
     },
     "IMU_INT2": {
       "pin": "P0.05",
@@ -254,7 +254,7 @@
       "active": "rising",
       "max_freq_hz": 200,
       "near_radio": false,
-      "function": "ICM-42688-P INT2 DRDY / Wake-on-Motion"
+      "function": "ICM-42688-P INT2 DRDY / Wake-on-Motion (INT_CONFIG=0x1B programs INT1/INT2 push-pull active-high at init)"
     },
     "ADXL_INT1": {
       "pin": "P0.06",

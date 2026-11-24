@@ -22,14 +22,14 @@ typedef enum {
 
 typedef enum {
     HKS_I2C_BUS_TWIM0_SENS = 0,  /* 400 kHz I2C0: MMC5983MA (0x30), BMP581 (0x47) */
-    HKS_I2C_BUS_TWIM1_PMIC = 1   /* 400 kHz I2C1: nPM1300 (0x6B) */
+    HKS_I2C_BUS_TWIM1_PMIC = 1   /* 400 kHz TWIM2 (contract key 'TWIM1' alias, ID 11): nPM1300 (0x6B) */
 } hks_hal_i2c_bus_t;
 
 typedef enum {
     HKS_LED_OFF   = 0u,
-    HKS_LED_GREEN = (1u << 0),
-    HKS_LED_AMBER = (1u << 1),
-    HKS_LED_RED   = (1u << 2)
+    HKS_LED_GREEN = (1u << 0), /* LD1 Green (P1.07 -> Q1A Gate 1) */
+    HKS_LED_AMBER = (1u << 1), /* Dual-LED bi-color Amber (LD1 Green + LD2 Red ON simultaneously) */
+    HKS_LED_RED   = (1u << 2)  /* LD2 Red (P1.08 -> Q1B Gate 2) */
 } hks_hal_led_mask_t;
 
 typedef struct {
