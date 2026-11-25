@@ -30,6 +30,17 @@
 #define NRF5340_QSPI_BASE       NRF5340_SPIM3_BASE
 #define NRF5340_RTC0_BASE       0x40014000UL
 #define NRF5340_USBD_BASE       0x40036000UL
+#define NRF5340_P0_BASE         0x40842500UL /* App Core P0 GPIO base */
+#define NRF5340_P1_BASE         0x40842800UL /* App Core P1 GPIO base */
+#define NRF_GPIO_OUTSET_OFFSET  0x008UL
+#define NRF_GPIO_OUTCLR_OFFSET  0x00CUL
+#define NRF_GPIO_PIN_CNF_OFFSET 0x200UL
+#define NRF_PIN_CNF_PULLUP_IN   0x0000000Cu  /* DIR=Input(0), INPUT=Connect(0), PULL=Pullup(3<<2) */
+#define NRF_PIN_CNF_STD_OUT     0x00000003u  /* DIR=Output(1), INPUT=Disconnect(1<<1), DRIVE=S0S1(0) */
+
+/* ICM-42688-P User Bank 0 Register 0x14: INT_CONFIG */
+#define ICM42688_REG_INT_CONFIG 0x14u
+#define ICM42688_INT_CFG_PP_AH  0x1Bu /* INT1 & INT2 push-pull (bit1/4=1), active-high (bit0/3=1), pulsed (bit2/5=0) */
 
 #define NRF_GPIO_PIN(port, pin) (((uint32_t)(port) * 32u) + (uint32_t)(pin))
 
@@ -93,6 +104,10 @@
 #define HKS_NPM1300_ADDR7       0x6Bu
 
 static volatile uint64_t g_stub_mono_us = 0u;
+static volatile uint32_t g_stub_p1_out = 0u;
+static volatile uint32_t g_stub_p1_pin_cnf[32];
+static bool g_imu_int_configured = false;
+static bool g_pmic_int_pullup_configured = false;
 
 static inline uintptr_t spi_bus_base(hks_hal_spi_bus_t bus) {
     return (bus == HKS_SPI_BUS_SPIM4_IMU)
@@ -153,6 +168,13 @@ int hks_hal_imu_read_fifo(hks_imu_sample_t *out, size_t max_samples,
     (void)out;
     (void)max_samples;
     (void)HKS_PIN_SPIM4_SCK;
+    if (!g_imu_int_configured) {
+        /* Configure ICM-42688-P INT_CONFIG (0x14) = 0x1B: INT1/INT2 push-pull active-high (N8) */
+        const uint8_t tx_int_cfg[2] = { ICM42688_REG_INT_CONFIG, ICM42688_INT_CFG_PP_AH };
+        uint8_t rx_dummy[2];
+        (void)hks_hal_spi_xfer(HKS_SPI_BUS_SPIM4_IMU, tx_int_cfg, rx_dummy, sizeof(tx_int_cfg));
+        g_imu_int_configured = true;
+    }
     if (out_count != NULL) {
         *out_count = 0u;
     }
@@ -211,11 +233,20 @@ int hks_hal_pmic_read(hks_hal_pmic_info_t *info) {
     /* nPM1300 EVENTSSHPHLD & status registers via TWIM2 (contract 'TWIM1'); IRQ on P1.05 */
     uint8_t reg16[2] = { 0x01u, 0x00u };
     uint8_t rx[4];
-    (void)HKS_PIN_PMIC_INT;
+    (void)NRF5340_P1_BASE;
+    if (!g_pmic_int_pullup_configured) {
+        /* Enable internal 13 kOhm pull-up on P1.05 (PMIC_INT) and configure GPIO0 GPOIRQ CMOS push-pull (N3) */
+        const uint32_t pmic_pin = HKS_PIN_PMIC_INT & 31u;
+        g_stub_p1_pin_cnf[pmic_pin] = NRF_PIN_CNF_PULLUP_IN;
+        const uint8_t gpio0_cfg[3] = { 0x06u, 0x00u, 0x05u }; /* GPIOMODE0 = GPOIRQ, push-pull */
+        (void)hks_hal_i2c_write_read(HKS_I2C_BUS_TWIM2_PMIC, HKS_NPM1300_ADDR7,
+                                     gpio0_cfg, sizeof(gpio0_cfg), NULL, 0u);
+        g_pmic_int_pullup_configured = true;
+    }
     if (info == NULL) {
         return -1;
     }
-    (void)hks_hal_i2c_write_read(HKS_I2C_BUS_TWIM1_PMIC, HKS_NPM1300_ADDR7,
+    (void)hks_hal_i2c_write_read(HKS_I2C_BUS_TWIM2_PMIC, HKS_NPM1300_ADDR7,
                                  reg16, sizeof(reg16), rx, sizeof(rx));
     info->vbatt_mv = 3900u;
     info->batt_temp_c_x100 = 2000;
@@ -327,13 +358,23 @@ bool hks_hal_button_pressed(void) {
 }
 
 void hks_hal_led_set(uint8_t color_mask) {
-    /* LD1 = Green (P1.07 -> Q1A G1), LD2 = Red (P1.08 -> Q1B G2); AMBER drives both LD1+LD2 */
+    /* LD1 = Green (P1.07 -> Q1A G1), LD2 = Red (P1.08 -> Q1B G2); AMBER drives both LD1+LD2 (N1) */
+    const uint32_t g_pin = HKS_PIN_LED_GREEN & 31u;
+    const uint32_t r_pin = HKS_PIN_LED_RED & 31u;
     const bool green_on = ((color_mask & (uint8_t)HKS_LED_GREEN) != 0u) ||
                           ((color_mask & (uint8_t)HKS_LED_AMBER) != 0u);
     const bool red_on   = ((color_mask & (uint8_t)HKS_LED_RED) != 0u) ||
                           ((color_mask & (uint8_t)HKS_LED_AMBER) != 0u);
-    (void)green_on;
-    (void)red_on;
-    (void)HKS_PIN_LED_GREEN;
-    (void)HKS_PIN_LED_RED;
+    g_stub_p1_pin_cnf[g_pin] = NRF_PIN_CNF_STD_OUT;
+    g_stub_p1_pin_cnf[r_pin] = NRF_PIN_CNF_STD_OUT;
+    if (green_on) {
+        g_stub_p1_out |= (1UL << g_pin);
+    } else {
+        g_stub_p1_out &= ~(1UL << g_pin);
+    }
+    if (red_on) {
+        g_stub_p1_out |= (1UL << r_pin);
+    } else {
+        g_stub_p1_out &= ~(1UL << r_pin);
+    }
 }

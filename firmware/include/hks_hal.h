@@ -22,7 +22,8 @@ typedef enum {
 
 typedef enum {
     HKS_I2C_BUS_TWIM0_SENS = 0,  /* 400 kHz I2C0: MMC5983MA (0x30), BMP581 (0x47) */
-    HKS_I2C_BUS_TWIM1_PMIC = 1   /* 400 kHz TWIM2 (contract key 'TWIM1' alias, ID 11): nPM1300 (0x6B) */
+    HKS_I2C_BUS_TWIM1_PMIC = 1,  /* 400 kHz TWIM2 (contract key 'TWIM1' alias, ID 11): nPM1300 (0x6B) */
+    HKS_I2C_BUS_TWIM2_PMIC = HKS_I2C_BUS_TWIM1_PMIC
 } hks_hal_i2c_bus_t;
 
 typedef enum {

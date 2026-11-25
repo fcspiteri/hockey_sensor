@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "HKS")(type "KiCad")(uri "${KIPRJMOD}/HKS.pretty")(options "")(descr "HKS Project Footprints"))
+)
