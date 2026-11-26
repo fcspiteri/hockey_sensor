@@ -1,0 +1,44 @@
+HOCKEY SENSOR REV A — TURNKEY 4-LAYER PCBA FABRICATION & ASSEMBLY NOTES
+=======================================================================
+
+1. BARE-BOARD PCB SPECIFICATIONS
+--------------------------------
+- Board Outline:        38.00 mm x 28.00 mm (rounded corners R = 3.00 mm on Edge.Cuts)
+- Layer Count:          4 copper layers (F.Cu, In1.Cu, In2.Cu, B.Cu)
+- Finished Thickness:   0.80 mm +/- 10%
+- Base Material:        FR-4 High-Tg (Tg >= 170 C, e.g., Isola 370HR or Shengyi S1000-2M), Er ~ 4.2 at 2.4 GHz
+- Copper Weights:
+    * L1 (F.Cu):        1.0 oz (35 um) finished
+    * L2 (In1.Cu):      0.5 oz (17.5 um) — Solid /GND reference plane (8.0 x 8.0 mm top-right RF keepout)
+    * L3 (In2.Cu):      0.5 oz (17.5 um) — /VDD_1V8 power plane + signal routing (8.0 x 8.0 mm top-right RF keepout)
+    * L4 (B.Cu):        1.0 oz (35 um) finished — /GND plane + bottom signal escapes (8.0 x 8.0 mm top-right RF keepout)
+- Dielectric Stackup:
+    * L1 to L2 Prepreg: 0.11 mm (2116 prepreg, Er = 4.2)
+    * L2 to L3 Core:    0.47 mm FR-4 core
+    * L3 to L4 Prepreg: 0.11 mm (2116 prepreg, Er = 4.2)
+- Controlled Impedance:
+    * 50 Ohm +/- 10% single-ended microstrip on L1 (F.Cu) referenced to L2 (In1.Cu): 0.20 mm trace width (RF_ANT_OUT, RF_MATCH_MID, RF_ANT_FEED)
+    * 90 Ohm +/- 10% differential on USB_D_P / USB_D_N
+- Minimum Design Rules:
+    * Min Trace / Space:       0.09 mm / 0.09 mm (3.5 mil / 3.5 mil)
+    * Min Via Drill / Pad:     0.20 mm drill / 0.40 mm pad
+    * Min Hole-to-Copper:      0.20 mm
+    * Copper-to-Edge:          0.25 mm
+- Surface Finish:       ENIG (Electroless Nickel Immersion Gold, 2-3 uin Au over 120-240 uin Ni)
+- Solder Mask:          Matte Black or Green LPI both sides, 0.04 mm max expansion, 0.08 mm min web
+- Via Protection:       All vias tented with solder mask (or IPC-4761 Type VII plugged & capped for thermal vias in U1, U2, U7 exposed pads)
+- Silkscreen:           White epoxy ink, clipped away from exposed pads/mask openings
+- Electrical Test:      100% flying-probe netlist continuity & isolation test against IPC-356 / Gerber netlist
+
+2. SMT ASSEMBLY (PCBA) NOTES
+----------------------------
+- Assembly Side:        Single-sided TOP (F.Cu) SMT assembly only. Bottom side (B.Cu) must remain completely flat for LiPo battery stackup.
+- BOM File:             hockey_sensor_pcba_bom.csv
+- Centroid / CPL File:  hockey_sensor_cpl_pick_and_place.csv (units: mm, origin: KiCad board coordinates matching Gerber origin)
+- Do Not Populate (DNP):
+    * C28 (0.8 pF 0402 RF shunt tuning pad — leave unpopulated for initial Rev A build)
+    * J2 (TC2050-IDC-NL Tag-Connect pogo footprint — no physical connector part)
+    * BT1 (Solder pads for off-board 3.7 V 250 mAh LiPo cell leads)
+    * FID1, FID2, FID3 (Optical fiducials)
+    * MH1, MH2, MH3, MH4 (1.50 mm NPTH M1.4 mounting holes)
+- X-Ray Inspection:     100% AXI inspection required on U1 (nRF5340-QKAA aQFN-94, 0.40 mm pitch) and U2 (nPM1300-QEAA QFN-32) to verify zero solder bridges and < 25% voiding on central thermal pads.

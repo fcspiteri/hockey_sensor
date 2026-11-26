@@ -1,0 +1,31 @@
+%TF.GenerationSoftware,KiCad,Pcbnew,10.0.8*%
+%TF.CreationDate,2026-11-25T19:15:33-08:00*%
+%TF.ProjectId,hockey_sensor,686f636b-6579-45f7-9365-6e736f722e6b,1.0.0*%
+%TF.SameCoordinates,Original*%
+%TF.FileFunction,Legend,Bot*%
+%TF.FilePolarity,Positive*%
+%FSLAX46Y46*%
+G04 Gerber Fmt 4.6, Leading zero omitted, Abs format (unit mm)*
+G04 Created by KiCad (PCBNEW 10.0.8) date 2026-11-25 19:15:33*
+%MOMM*%
+%LPD*%
+G01*
+G04 APERTURE LIST*
+%ADD10C,1.580000*%
+G04 APERTURE END LIST*
+%LPC*%
+D10*
+%TO.C,MH4*%
+X135200000Y-87800000D03*
+%TD*%
+%TO.C,MH2*%
+X118200000Y-116800000D03*
+%TD*%
+%TO.C,MH1*%
+X118200000Y-83200000D03*
+%TD*%
+%TO.C,MH3*%
+X141800000Y-116800000D03*
+%TD*%
+%LPD*%
+M02*
