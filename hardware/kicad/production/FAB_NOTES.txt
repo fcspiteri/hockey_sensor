@@ -21,8 +21,8 @@ HOCKEY SENSOR REV A — TURNKEY 4-LAYER PCBA FABRICATION & ASSEMBLY NOTES
     * 90 Ohm +/- 10% differential on USB_D_P / USB_D_N
 - Minimum Design Rules:
     * Min Trace / Space:       0.09 mm / 0.09 mm (3.5 mil / 3.5 mil)
-    * Min Via Drill / Pad:     0.20 mm drill / 0.40 mm pad
-    * Min Hole-to-Copper:      0.20 mm
+    * Min Via Drill / Pad:     0.30 mm drill / 0.40-0.45 mm pad (JLCPCB 0.3mm/(0.4/0.45mm) standard free tier)
+    * Min Hole-to-Copper:      0.14 mm
     * Copper-to-Edge:          0.25 mm
 - Surface Finish:       ENIG (Electroless Nickel Immersion Gold, 2-3 uin Au over 120-240 uin Ni)
 - Solder Mask:          Matte Black or Green LPI both sides, 0.04 mm max expansion, 0.08 mm min web

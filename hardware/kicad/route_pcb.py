@@ -1269,6 +1269,26 @@ def import_ses(pcb_path: Path, ses_path: Path) -> None:
                 evac_in2 += 1
             continue
     print(f"IN1_EVACUATED bcu={evac_bcu} in2={evac_in2} remaining_in1={len(in1_trks_ev) - evac_bcu - evac_in2}")
+    # Enforce 0.30 mm via drill / 0.40-0.45 mm via diameter across all vias (JLCPCB 0.3mm/(0.4/0.45mm) free tier)
+    drop_pts_03 = [(128.85, 101.20), (139.00, 96.00), (135.43, 100.31)]
+    for t_v03 in list(board.GetTracks()):
+        if t_v03.GetClass() == "PCB_VIA":
+            pos_03 = t_v03.GetPosition()
+            vx_03, vy_03 = pcbnew.ToMM(pos_03.x), pcbnew.ToMM(pos_03.y)
+            if any(math.hypot(vx_03 - dx_03, vy_03 - dy_03) < 0.03 for dx_03, dy_03 in drop_pts_03):
+                board.Remove(t_v03)
+            else:
+                t_v03.SetDrill(pcbnew.FromMM(0.30))
+    if gnd_net:
+        gc_03 = gnd_net.GetNetCode()
+        for ax_03, ay_03, bx_03, by_03 in [(128.85, 101.20, 129.30, 101.14), (135.43, 100.31, 135.43, 99.845)]:
+            trk_03 = pcbnew.PCB_TRACK(board)
+            trk_03.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(ax_03), pcbnew.FromMM(ay_03)))
+            trk_03.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(bx_03), pcbnew.FromMM(by_03)))
+            trk_03.SetWidth(pcbnew.FromMM(0.09))
+            trk_03.SetLayer(pcbnew.F_Cu)
+            trk_03.SetNetCode(gc_03)
+            board.Add(trk_03)
     pcbnew.SaveBoard(str(pcb_path), board)
     # Add and fill the solid F.Cu (GND), In1.Cu (GND), B.Cu (GND), and In2.Cu (VDD_1V8) copper pours
     _add_copper_pour_zones(pcb_path)
