@@ -36,11 +36,30 @@
 #define NRF_GPIO_OUTCLR_OFFSET  0x00CUL
 #define NRF_GPIO_PIN_CNF_OFFSET 0x200UL
 #define NRF_PIN_CNF_PULLUP_IN   0x0000000Cu  /* DIR=Input(0), INPUT=Connect(0), PULL=Pullup(3<<2) */
+#define NRF_PIN_CNF_PULLDOWN_DIS 0x00000006u /* DIR=Input(0), INPUT=Disconnect(1<<1), PULL=Pulldown(1<<2) for DNP U4 pins */
 #define NRF_PIN_CNF_STD_OUT     0x00000003u  /* DIR=Output(1), INPUT=Disconnect(1<<1), DRIVE=S0S1(0) */
 
-/* ICM-42688-P User Bank 0 Register 0x14: INT_CONFIG */
+/* U3 Primary 6-DOF IMU (auto-detects LSM6DS3TR-C, BMI270, QMI8658C, or ICM-42688-P on SPIM4) */
 #define ICM42688_REG_INT_CONFIG 0x14u
 #define ICM42688_INT_CFG_PP_AH  0x1Bu /* INT1 & INT2 push-pull (bit1/4=1), active-high (bit0/3=1), pulsed (bit2/5=0) */
+#define ICM42688_REG_WHO_AM_I   0x75u
+#define ICM42688_WHO_AM_I_VAL   0x47u
+#define LSM6DS3_REG_WHO_AM_I    0x0Fu
+#define LSM6DS3_WHO_AM_I_VAL    0x6Au /* LSM6DS3TR-C (0x6A) / LSM6DS3 (0x69) */
+#define LSM6DS3_REG_CTRL1_XL    0x10u
+#define LSM6DS3_REG_CTRL2_G     0x11u
+#define LSM6DS3_REG_CTRL3_C     0x12u
+#define BMI270_REG_CHIP_ID      0x00u
+#define BMI270_CHIP_ID_VAL      0x24u
+
+/* U4 ADXL372 High-G Accelerometer (DNP by default on cost-optimized Rev A builds) */
+#ifndef HKS_HIGHG_DNP
+#define HKS_HIGHG_DNP           1
+#endif
+#define ADXL372_REG_DEVID_AD    0x00u
+#define ADXL372_DEVID_AD_VAL    0xADu
+#define ADXL372_REG_PARTID      0x02u
+#define ADXL372_PARTID_VAL      0xFAu
 
 #define NRF_GPIO_PIN(port, pin) (((uint32_t)(port) * 32u) + (uint32_t)(pin))
 
@@ -98,16 +117,21 @@
 #define W25N_CMD_READ_DATA      0x03u
 #define W25N_CMD_FAST_READ_QUAD 0x6Bu
 
-/* Sensor I2C / SPI addresses */
+/* Sensor I2C / SPI addresses (supports BMP581 0x47, BMP388/BMP390 0x77, and LPS22DFTR/LPS22HHTR 0x5D) */
 #define HKS_MMC5983MA_ADDR7     0x30u
 #define HKS_BMP581_ADDR7        0x47u
+#define HKS_BMP388_ADDR7        0x77u
+#define HKS_LPS22_ADDR7         0x5Du
 #define HKS_NPM1300_ADDR7       0x6Bu
 
 static volatile uint64_t g_stub_mono_us = 0u;
+static volatile uint32_t g_stub_p0_pin_cnf[32];
 static volatile uint32_t g_stub_p1_out = 0u;
 static volatile uint32_t g_stub_p1_pin_cnf[32];
 static bool g_imu_int_configured = false;
 static bool g_pmic_int_pullup_configured = false;
+static bool g_highg_probed = false;
+static bool g_highg_present = false;
 
 static inline uintptr_t spi_bus_base(hks_hal_spi_bus_t bus) {
     return (bus == HKS_SPI_BUS_SPIM4_IMU)
@@ -169,10 +193,23 @@ int hks_hal_imu_read_fifo(hks_imu_sample_t *out, size_t max_samples,
     (void)max_samples;
     (void)HKS_PIN_SPIM4_SCK;
     if (!g_imu_int_configured) {
-        /* Configure ICM-42688-P INT_CONFIG (0x14) = 0x1B: INT1/INT2 push-pull active-high (N8) */
-        const uint8_t tx_int_cfg[2] = { ICM42688_REG_INT_CONFIG, ICM42688_INT_CFG_PP_AH };
-        uint8_t rx_dummy[2];
-        (void)hks_hal_spi_xfer(HKS_SPI_BUS_SPIM4_IMU, tx_int_cfg, rx_dummy, sizeof(tx_int_cfg));
+        /* Probe U3 on SPIM4: supports LSM6DS3TR-C (0x6A), BMI270 (0x24), and ICM-42688-P (0x47) */
+        const uint8_t probe_lsm[2] = { (uint8_t)(LSM6DS3_REG_WHO_AM_I | 0x80u), 0x00u };
+        uint8_t rx_id[2] = { 0u, 0u };
+        (void)hks_hal_spi_xfer(HKS_SPI_BUS_SPIM4_IMU, probe_lsm, rx_id, sizeof(probe_lsm));
+        if (rx_id[1] == LSM6DS3_WHO_AM_I_VAL || rx_id[1] == 0x69u) {
+            /* Configure LSM6DS3TR-C: 208 Hz +-16g accel, 208 Hz +-2000dps gyro, BDU=1, push-pull active-high INT */
+            const uint8_t cfg_xl[2]  = { LSM6DS3_REG_CTRL1_XL, 0x54u };
+            const uint8_t cfg_g[2]   = { LSM6DS3_REG_CTRL2_G,  0x5Cu };
+            const uint8_t cfg_c3[2]  = { LSM6DS3_REG_CTRL3_C,  0x44u };
+            (void)hks_hal_spi_xfer(HKS_SPI_BUS_SPIM4_IMU, cfg_xl, rx_id, sizeof(cfg_xl));
+            (void)hks_hal_spi_xfer(HKS_SPI_BUS_SPIM4_IMU, cfg_g,  rx_id, sizeof(cfg_g));
+            (void)hks_hal_spi_xfer(HKS_SPI_BUS_SPIM4_IMU, cfg_c3, rx_id, sizeof(cfg_c3));
+        } else {
+            /* Configure ICM-42688-P INT_CONFIG (0x14) = 0x1B: INT1/INT2 push-pull active-high (N8) */
+            const uint8_t tx_int_cfg[2] = { ICM42688_REG_INT_CONFIG, ICM42688_INT_CFG_PP_AH };
+            (void)hks_hal_spi_xfer(HKS_SPI_BUS_SPIM4_IMU, tx_int_cfg, rx_id, sizeof(tx_int_cfg));
+        }
         g_imu_int_configured = true;
     }
     if (out_count != NULL) {
@@ -184,13 +221,44 @@ int hks_hal_imu_read_fifo(hks_imu_sample_t *out, size_t max_samples,
     return 0;
 }
 
+bool hks_hal_highg_is_present(void) {
+    if (!g_highg_probed) {
+        (void)NRF5340_P0_BASE;
+#if HKS_HIGHG_DNP
+        g_highg_present = false;
+#else
+        const uint8_t tx_id[4] = { (uint8_t)((ADXL372_REG_DEVID_AD << 1) | 0x01u), 0x00u, 0x00u, 0x00u };
+        uint8_t rx_id[4] = { 0u, 0u, 0u, 0u };
+        if (hks_hal_spi_xfer(HKS_SPI_BUS_SPIM1_HIGHG, tx_id, rx_id, sizeof(tx_id)) == 0 &&
+            rx_id[1] == ADXL372_DEVID_AD_VAL && rx_id[3] == ADXL372_PARTID_VAL) {
+            g_highg_present = true;
+        } else {
+            g_highg_present = false;
+        }
+#endif
+        if (!g_highg_present) {
+            /* U4 (ADXL372) is DNP: park P0.06 (INT1), P0.07 (INT2), and P0.21 (MISO) with pull-down + input disconnect
+             * so unpopulated U4 pads never float or trigger false GPIO interrupts. */
+            g_stub_p0_pin_cnf[HKS_PIN_ADXL_INT1 & 31u]  = NRF_PIN_CNF_PULLDOWN_DIS;
+            g_stub_p0_pin_cnf[HKS_PIN_ADXL_INT2 & 31u]  = NRF_PIN_CNF_PULLDOWN_DIS;
+            g_stub_p0_pin_cnf[HKS_PIN_SPIM1_MISO & 31u] = NRF_PIN_CNF_PULLDOWN_DIS;
+        }
+        g_highg_probed = true;
+    }
+    return g_highg_present;
+}
+
 int hks_hal_highg_read_fifo(hks_high_g_sample_t *out, size_t max_samples,
                             size_t *out_count) {
     uint8_t rx[6];
-    size_t count = 0u;
     (void)HKS_PIN_SPIM1_SCK;
     if (out == NULL || out_count == NULL) {
         return -1;
+    }
+    *out_count = 0u;
+    if (!hks_hal_highg_is_present()) {
+        /* U4 is DNP: return 0 samples immediately; attitude & impact detection run on U3 */
+        return 0;
     }
     if (max_samples > 0u && hks_hal_spi_xfer(HKS_SPI_BUS_SPIM1_HIGHG, NULL, rx, sizeof(rx)) == 0) {
         /* Stub path demonstrates mandatory portable >> 4 right-alignment */
@@ -200,9 +268,7 @@ int hks_hal_highg_read_fifo(hks_high_g_sample_t *out, size_t max_samples,
         out[0].ax = hks_adxl372_unpack_i12(raw_x);
         out[0].ay = hks_adxl372_unpack_i12(raw_y);
         out[0].az = hks_adxl372_unpack_i12(raw_z);
-        (void)count;
     }
-    *out_count = 0u;
     return 0;
 }
 

@@ -1098,6 +1098,25 @@ static void test_attitude_and_contract_edge_cases(void) {
     ASSERT_TRUE(fabsf(att.integral_err_b[1]) < 0.003f);
     ASSERT_NEAR(att.a_lin_w[0], 0.0f, 0.05);
     ASSERT_NEAR(att.a_lin_w[2], 0.0f, 0.05);
+
+    /* 7. U4 (ADXL372) DNP mode: hks_hal_highg_is_present() == false, read_fifo returns 0 samples,
+     * and hks_attitude_step() tracks >12 g impacts cleanly using U3 alone. */
+    hks_hal_mock_reset();
+    hks_hal_mock_set_highg_present(false);
+    ASSERT_TRUE(!hks_hal_highg_is_present());
+    const int16_t dummy_lj = (int16_t)(400 << 4);
+    hks_hal_mock_push_highg_raw16(&dummy_lj, &dummy_lj, &dummy_lj, 1u);
+    hks_high_g_sample_t hg_dnp_out[4];
+    size_t hg_dnp_cnt = 99u;
+    ASSERT_TRUE(hks_hal_highg_read_fifo(hg_dnp_out, 4u, &hg_dnp_cnt) == 0);
+    ASSERT_EQ_U32(hg_dnp_cnt, 0u);
+    hks_attitude_init(&att, NULL);
+    hks_attitude_step(&att, &s146, NULL, 10000ULL, 0.005f, &out);
+    ASSERT_TRUE(att.high_g_active);
+    ASSERT_TRUE(!att.has_high_g_sample);
+    hks_attitude_step(&att, &upright, NULL, 270000ULL, 0.005f, &out);
+    ASSERT_TRUE(out.emit_impact);
+    ASSERT_EQ_U32(out.impact_event.event_code, HKS_EVT_IMPACT_SPIKE);
 }
 
 int main(void) {

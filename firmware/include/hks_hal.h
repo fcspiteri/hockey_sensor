@@ -52,11 +52,13 @@ int hks_hal_i2c_write_read(hks_hal_i2c_bus_t bus, uint8_t addr7,
                            uint8_t *rx, size_t rx_len);
 
 /* Sensor & PMIC typed read primitives (return 0 on success, <0 on error) */
-int hks_hal_imu_read_fifo(hks_imu_sample_t *out, size_t max_samples,
-                          size_t *out_count, int16_t *temp_c_x100);
-/* Reads ADXL372 FIFO and applies portable (>> 4) right-alignment into [-2048, +2047] */
-int hks_hal_highg_read_fifo(hks_high_g_sample_t *out, size_t max_samples,
-                            size_t *out_count);
+int  hks_hal_imu_read_fifo(hks_imu_sample_t *out, size_t max_samples,
+                           size_t *out_count, int16_t *temp_c_x100);
+/* Returns true if U4 (ADXL372) is populated and responds on SPIM1; false when U4 is DNP */
+bool hks_hal_highg_is_present(void);
+/* Reads ADXL372 FIFO and applies portable (>> 4) right-alignment into [-2048, +2047] (no-op with *out_count=0 when U4 is DNP) */
+int  hks_hal_highg_read_fifo(hks_high_g_sample_t *out, size_t max_samples,
+                             size_t *out_count);
 int hks_hal_mag_read(int32_t *mx_raw, int32_t *my_raw, int32_t *mz_raw,
                      bool *set_reset_done);
 int hks_hal_baro_read(uint32_t *pressure_pa_x64, int16_t *temp_c_x100);
@@ -106,6 +108,7 @@ void     hks_hal_mock_push_highg_raw16(const int16_t *ax_lj12,
                                        const int16_t *ay_lj12,
                                        const int16_t *az_lj12,
                                        size_t count);
+void     hks_hal_mock_set_highg_present(bool present);
 
 size_t   hks_hal_mock_usb_push_rx(const uint8_t *buf, size_t len);
 size_t   hks_hal_mock_usb_pop_tx(uint8_t *buf, size_t max_len);

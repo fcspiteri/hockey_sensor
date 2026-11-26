@@ -37,6 +37,7 @@ typedef struct {
     uint16_t hg_raw_q[MOCK_SENSOR_QUEUE_CAP][3];
     size_t   hg_q_head;
     size_t   hg_q_count;
+    bool     highg_present;
 
     uint8_t usb_rx_buf[MOCK_USB_BUF_BYTES];
     size_t  usb_rx_head;
@@ -110,6 +111,7 @@ void hks_hal_mock_reset(void) {
     g_mock.pressure_pa_x64 = 6484800u;
     g_mock.baro_temp_c_x100 = 2140;
     g_mock.imu_temp_c_x100 = 2150;
+    g_mock.highg_present = true;
     g_mock.initialized = true;
 }
 
@@ -250,6 +252,10 @@ void hks_hal_mock_push_highg_raw16(const int16_t *ax_lj12,
     }
 }
 
+void hks_hal_mock_set_highg_present(bool present) {
+    g_mock.highg_present = present;
+}
+
 size_t hks_hal_mock_usb_push_rx(const uint8_t *buf, size_t len) {
     if (buf == NULL) {
         return 0u;
@@ -350,10 +356,18 @@ int hks_hal_imu_read_fifo(hks_imu_sample_t *out, size_t max_samples,
     return 0;
 }
 
+bool hks_hal_highg_is_present(void) {
+    return g_mock.highg_present;
+}
+
 int hks_hal_highg_read_fifo(hks_high_g_sample_t *out, size_t max_samples,
                             size_t *out_count) {
     if (out == NULL || out_count == NULL) {
         return -1;
+    }
+    if (!g_mock.highg_present) {
+        *out_count = 0u;
+        return 0;
     }
     size_t n = 0u;
     while (n < max_samples && g_mock.hg_q_count > 0u) {
