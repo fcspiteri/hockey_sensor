@@ -2058,9 +2058,39 @@ def write_pcba_production_files(prod_dir: Path, comps: list[ComponentPlacement])
         for (val, fp, mpn, mfg, dnp, rail, notes), refs in bom_groups.items():
             w.writerow([val, ",".join(refs), fp, mpn, mfg, len(refs), "DNP" if dnp else "", rail, notes])
 
-    # 2. Centroid Pick-and-Place (CPL / .pos CSV)
+    # 1b. Populated-only PCBA BOM CSV (excludes DNP items J2, C28, RT1 for portals that do not parse the DNP column)
+    bom_pop_path = prod_dir / "hockey_sensor_pcba_bom_populated_only.csv"
+    with bom_pop_path.open("w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["Comment", "Designator", "Footprint", "MPN", "Manufacturer", "Quantity", "DNP", "Rail", "Notes"])
+        for (val, fp, mpn, mfg, dnp, rail, notes), refs in bom_groups.items():
+            if dnp:
+                continue
+            w.writerow([val, ",".join(refs), fp, mpn, mfg, len(refs), "", rail, notes])
+
+    # 2. Centroid Pick-and-Place (CPL / .pos CSV) — includes all 76 non-Mechanical BOM designators (including J2, C28, RT1) for 100% 1-to-1 BOM<->CPL parity
     cpl_path = prod_dir / "hockey_sensor_cpl_pick_and_place.csv"
     with cpl_path.open("w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["Designator", "Val", "Package", "Mid X (mm)", "Mid Y (mm)", "Frame_S_X (mm)", "Frame_S_Y (mm)", "Rotation", "Layer"])
+        for c in comps:
+            if c.category == "Mechanical":
+                continue
+            w.writerow([
+                c.refdes,
+                c.value,
+                c.footprint.split(":")[-1],
+                f"{c.kicad_x_mm:.3f}",
+                f"{c.kicad_y_mm:.3f}",
+                f"{c.xs_mm:+.3f}",
+                f"{c.ys_mm:+.3f}",
+                f"{c.rot_deg:.1f}",
+                "top" if c.layer == "F.Cu" else "bottom",
+            ])
+
+    # 2b. Populated-only CPL CSV (excludes DNP items J2, C28, RT1 to pair with hockey_sensor_pcba_bom_populated_only.csv)
+    cpl_pop_path = prod_dir / "hockey_sensor_cpl_populated_only.csv"
+    with cpl_pop_path.open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["Designator", "Val", "Package", "Mid X (mm)", "Mid Y (mm)", "Frame_S_X (mm)", "Frame_S_Y (mm)", "Rotation", "Layer"])
         for c in comps:
