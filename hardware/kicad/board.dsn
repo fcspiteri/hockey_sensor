@@ -90,7 +90,7 @@
       (place J2 129500 -83200 front 0 (PN "TC2050-IDC-NL"))
     )
     (component HKS:Johanson_2450AT18B100
-      (place A1 138300 -85000 front 0 (PN 2450AT18B0100001E))
+      (place A1 138500 -82200 front 0 (PN 2450AT18B0100001E))
     )
     (component "HKS:Crystal_SMD_2016-4Pin_2.0x1.6mm"
       (place Y1 132200 -89000 front 0 (PN "NX2016SA-32MHz"))
@@ -128,9 +128,9 @@
       (place L4 127800 -86500 front 0 (PN 10uH_LQM18DN100M70L))
     )
     (component HKS:C_0402_1005Metric
-      (place C27 131500 -90500 front 0 (PN 1.2pF_C_RF1))
-      (place C28 131500 -91700 front 0 (PN 0.8pF_C_RF_SHUNT_DNI))
-      (place L6 135200 -85000 front 0 (PN 3.3nH_LQW15AN3N3C00D))
+      (place C27 134300 -82200 front 0 (PN 1.2pF_C_RF1))
+      (place C28 131500 -90500 front 0 (PN 0.8pF_C_RF_SHUNT_DNI))
+      (place L6 135600 -82200 front 0 (PN 3.3nH_LQW15AN3N3C00D))
       (place RT1 123500 -113800 front 0 (PN 10k_NTC_DNI))
       (place R1 119500 -106500 front 0 (PN "47k_1%_VSET1"))
       (place R2 119500 -110200 front 0 (PN "150k_1%_VSET2"))
@@ -171,7 +171,7 @@
       (place C18 141200 -98400 front 0 (PN 100nF_10V))
     )
     (component HKS:L_0402_1005Metric_Vert
-      (place L5 135200 -86200 front 0 (PN 2.7nH_LQW15AN2N7C00D))
+      (place L5 135000 -83200 front 0 (PN 2.7nH_LQW15AN2N7C00D))
     )
     (component HKS:Battery_Pads_3Pin_VBAT_NTC_GND
       (place BT1 122500 -115500 front 0 (PN "502535-450mAh-LiPo-Pads"))
@@ -180,7 +180,7 @@
       (place MH1 118200 -83200 front 0 (PN M1.4_Boss))
       (place MH2 118200 -116800 front 0 (PN M1.4_Boss))
       (place MH3 141800 -116800 front 0 (PN M1.4_Boss))
-      (place MH4 134500 -83200 front 0 (PN M1.4_Boss))
+      (place MH4 133200 -85500 front 0 (PN M1.4_Boss))
     )
   )
   (library
@@ -533,8 +533,8 @@
     (image HKS:L_0402_1005Metric_Vert
       (outline (polygon signal 0  395 -645  -395 -645  -395 645  395 645))
       (outline (path signal 100  -250 500  250 500  250 -500  -250 -500  -250 500))
-      (pin RoundRect[T]Pad_500.000000x500.000000_125.476000_um_0.000000_0 1 0 -450)
-      (pin RoundRect[T]Pad_500.000000x500.000000_125.476000_um_0.000000_0 2 0 450)
+      (pin RoundRect[T]Pad_500.000000x500.000000_125.476000_um_0.000000_0 1 0 450)
+      (pin RoundRect[T]Pad_500.000000x500.000000_125.476000_um_0.000000_0 2 0 -450)
     )
     (image HKS:Battery_Pads_3Pin_VBAT_NTC_GND
       (outline (polygon signal 0  2395 -1145  -2395 -1145  -2395 1145  2395 1145))
@@ -814,42 +814,42 @@
   (network
     (net /GND)
     (net /VBUS_5V
-      (pins U1-A5 U2-1 U2-2 J1-A4 J1-B4 D1-1 C19-1)
+      (pins U1-A5 U2-21 U2-22 J1-A4 J1-B4 D1-1 C19-1)
     )
     (net /VBAT
-      (pins U2-3 U2-32 BT1-1)
+      (pins U2-19 BT1-1)
     )
     (net /VSYS
-      (pins U2-5 U2-6 U2-15 U2-31)
+      (pins U2-4 U2-20)
     )
     (net /VDD_1V8
       (pins U1-A19 U1-AC1 U1-AG1 U1-AJ31 U1-AL3 U1-AL7 U1-AL11 U1-AL17 U1-AL25 U1-B8
-        U1-B28 U1-C1 U1-E1 U1-E31 U1-L1 U1-N31 U1-U1 U2-9 U2-18 U2-29 U3-5 U3-8 U4-1
-        U4-14 U4-16 U6-1 U6-5 U6-6 U6-10 U7-8 U8-2 U9-1 J2-1 L1-2 R5-2 R6-2 R7-2 R8-2
-        R9-2 R10-2 R11-2 R14-2 C20-1 C23-1 C3-1 C4-1 C5-1 C6-1 C7-1 C8-1 C9-1 C10-1
-        C11-1 C12-1 C13-1)
+        U1-B28 U1-C1 U1-E1 U1-E31 U1-L1 U1-N31 U1-U1 U2-1 U2-12 U3-5 U3-8 U4-1 U4-14
+        U4-16 U6-1 U6-5 U6-6 U6-10 U7-8 U8-2 U9-1 J2-1 L1-2 R5-2 R6-2 R7-2 R8-2 R9-2
+        R10-2 R11-2 R14-2 C20-1 C23-1 C3-1 C4-1 C5-1 C6-1 C7-1 C8-1 C9-1 C10-1 C11-1
+        C12-1 C13-1)
     )
     (net /VDD_3V0
-      (pins U2-12 U2-30 U5-2 U5-4 U5-13 U9-6 L2-2 R15-2 R16-2 R17-2 R18-1 R19-1 C21-1
-        C15-1 C16-1)
+      (pins U2-32 U5-2 U5-4 U5-13 U9-6 L2-2 R15-2 R16-2 R17-2 R18-1 R19-1 C21-1 C15-1
+        C16-1)
     )
     (net /SW1_BUCK1
-      (pins U2-7 L1-1)
+      (pins U2-3 L1-1)
     )
     (net /SW2_BUCK2
-      (pins U2-14 L2-1)
+      (pins U2-5 L2-1)
     )
     (net /PMIC_VSET1
-      (pins U2-10 R1-1)
+      (pins U2-17 R1-1)
     )
     (net /PMIC_VSET2
-      (pins U2-11 R2-1)
+      (pins U2-16 R2-1)
     )
     (net /PMIC_NTC
-      (pins U2-4 RT1-1 BT1-2)
+      (pins U2-18 RT1-1 BT1-2)
     )
     (net /PMIC_SHPHLD
-      (pins U2-17 SW1-1 D2-1)
+      (pins U2-15 SW1-1 D2-1)
     )
     (net /USB_D_P
       (pins U1-B2 U10-1 U10-10 J1-A6 J1-B6)
@@ -966,13 +966,13 @@
       (pins U1-AL19 U6-7)
     )
     (net /I2C2_PMIC_SDA_P0.23
-      (pins U1-AK20 U2-19 R7-1)
+      (pins U1-AK20 U2-13 R7-1)
     )
     (net /I2C2_PMIC_SCL_P0.24
-      (pins U1-AL27 U2-20 R8-1)
+      (pins U1-AL27 U2-14 R8-1)
     )
     (net /PMIC_INT_P1.05
-      (pins U1-AK22 U2-21)
+      (pins U1-AK22 U2-7)
     )
     (net /BTN_USER_N_P1.06
       (pins U1-AL21 D2-2 R14-1)
@@ -1034,17 +1034,11 @@
     (net "unconnected-(U1-PA17-PadA17)"
       (pins U1-A17)
     )
-    (net "unconnected-(U1-PA25-PadA25)"
-      (pins U1-A25)
-    )
     (net "unconnected-(U1-PAA1-PadAA1)"
       (pins U1-AA1)
     )
     (net "unconnected-(U1-PAE31-PadAE31)"
       (pins U1-AE31)
-    )
-    (net "unconnected-(U1-PAG31-PadAG31)"
-      (pins U1-AG31)
     )
     (net "unconnected-(U1-PAK6-PadAK6)"
       (pins U1-AK6)
@@ -1060,9 +1054,6 @@
     )
     (net "unconnected-(U1-PAL29-PadAL29)"
       (pins U1-AL29)
-    )
-    (net "unconnected-(U1-PB12-PadB12)"
-      (pins U1-B12)
     )
     (net "unconnected-(U1-PB14-PadB14)"
       (pins U1-B14)
@@ -1082,29 +1073,8 @@
     (net "unconnected-(U1-PB24-PadB24)"
       (pins U1-B24)
     )
-    (net "unconnected-(U1-PB26-PadB26)"
-      (pins U1-B26)
-    )
-    (net "unconnected-(U1-PD2-PadD2)"
-      (pins U1-D2)
-    )
-    (net "unconnected-(U1-PF2-PadF2)"
-      (pins U1-F2)
-    )
-    (net "unconnected-(U1-PG1-PadG1)"
-      (pins U1-G1)
-    )
-    (net "unconnected-(U1-PH2-PadH2)"
-      (pins U1-H2)
-    )
     (net "unconnected-(U1-PJ1-PadJ1)"
       (pins U1-J1)
-    )
-    (net "unconnected-(U1-PJ31-PadJ31)"
-      (pins U1-J31)
-    )
-    (net "unconnected-(U1-PK2-PadK2)"
-      (pins U1-K2)
     )
     (net "unconnected-(U1-PM2-PadM2)"
       (pins U1-M2)
@@ -1112,17 +1082,23 @@
     (net "unconnected-(U1-PR31-PadR31)"
       (pins U1-R31)
     )
-    (net "unconnected-(U1-PT2-PadT2)"
-      (pins U1-T2)
-    )
     (net "unconnected-(U1-PU31-PadU31)"
       (pins U1-U31)
     )
     (net "unconnected-(U1-PW1-PadW1)"
       (pins U1-W1)
     )
-    (net "unconnected-(U2-P22-Pad22)"
-      (pins U2-22)
+    (net "unconnected-(U2-P8-Pad8)"
+      (pins U2-8)
+    )
+    (net "unconnected-(U2-P9-Pad9)"
+      (pins U2-9)
+    )
+    (net "unconnected-(U2-P10-Pad10)"
+      (pins U2-10)
+    )
+    (net "unconnected-(U2-P11-Pad11)"
+      (pins U2-11)
     )
     (net "unconnected-(U2-P23-Pad23)"
       (pins U2-23)
@@ -1141,6 +1117,15 @@
     )
     (net "unconnected-(U2-P28-Pad28)"
       (pins U2-28)
+    )
+    (net "unconnected-(U2-P29-Pad29)"
+      (pins U2-29)
+    )
+    (net "unconnected-(U2-P30-Pad30)"
+      (pins U2-30)
+    )
+    (net "unconnected-(U2-P31-Pad31)"
+      (pins U2-31)
     )
     (net "unconnected-(U3-P2-Pad2)"
       (pins U3-2)
@@ -1188,22 +1173,21 @@
       /SPI1_MOSI_P0.20 /SPI1_SCK_P0.19 /SPI4_CS_IMU_N_P0.11 /SPI4_MISO_P0.10
       /SPI4_MOSI_P0.09 /SPI4_SCK_P0.08 /SW1_BUCK1 /SW2_BUCK2 /SWDCLK /SWDIO
       /USB_CC1 /USB_CC2 /USB_D_N /USB_D_P /VBAT /VBUS_5V /VDD_1V8 /VDD_3V0
-      /VSYS "unconnected-(A1-P2-Pad2)" "unconnected-(U1-PA17-PadA17)" "unconnected-(U1-PA25-PadA25)"
-      "unconnected-(U1-PAA1-PadAA1)" "unconnected-(U1-PAE31-PadAE31)" "unconnected-(U1-PAG31-PadAG31)"
-      "unconnected-(U1-PAK26-PadAK26)" "unconnected-(U1-PAK28-PadAK28)" "unconnected-(U1-PAK30-PadAK30)"
-      "unconnected-(U1-PAK6-PadAK6)" "unconnected-(U1-PAL29-PadAL29)" "unconnected-(U1-PB12-PadB12)"
+      /VSYS "unconnected-(A1-P2-Pad2)" "unconnected-(U1-PA17-PadA17)" "unconnected-(U1-PAA1-PadAA1)"
+      "unconnected-(U1-PAE31-PadAE31)" "unconnected-(U1-PAK26-PadAK26)" "unconnected-(U1-PAK28-PadAK28)"
+      "unconnected-(U1-PAK30-PadAK30)" "unconnected-(U1-PAK6-PadAK6)" "unconnected-(U1-PAL29-PadAL29)"
       "unconnected-(U1-PB14-PadB14)" "unconnected-(U1-PB16-PadB16)" "unconnected-(U1-PB18-PadB18)"
       "unconnected-(U1-PB20-PadB20)" "unconnected-(U1-PB22-PadB22)" "unconnected-(U1-PB24-PadB24)"
-      "unconnected-(U1-PB26-PadB26)" "unconnected-(U1-PD2-PadD2)" "unconnected-(U1-PF2-PadF2)"
-      "unconnected-(U1-PG1-PadG1)" "unconnected-(U1-PH2-PadH2)" "unconnected-(U1-PJ1-PadJ1)"
-      "unconnected-(U1-PJ31-PadJ31)" "unconnected-(U1-PK2-PadK2)" "unconnected-(U1-PM2-PadM2)"
-      "unconnected-(U1-PR31-PadR31)" "unconnected-(U1-PT2-PadT2)" "unconnected-(U1-PU31-PadU31)"
-      "unconnected-(U1-PW1-PadW1)" "unconnected-(U2-P22-Pad22)" "unconnected-(U2-P23-Pad23)"
-      "unconnected-(U2-P24-Pad24)" "unconnected-(U2-P25-Pad25)" "unconnected-(U2-P26-Pad26)"
-      "unconnected-(U2-P27-Pad27)" "unconnected-(U2-P28-Pad28)" "unconnected-(U3-P2-Pad2)"
-      "unconnected-(U3-P3-Pad3)" "unconnected-(U4-P10-Pad10)" "unconnected-(U4-P3-Pad3)"
-      "unconnected-(U5-P12-Pad12)" "unconnected-(U5-P14-Pad14)" "unconnected-(U5-P16-Pad16)"
-      "unconnected-(U5-P3-Pad3)" "unconnected-(U5-P7-Pad7)" "unconnected-(U5-P8-Pad8)"
+      "unconnected-(U1-PJ1-PadJ1)" "unconnected-(U1-PM2-PadM2)" "unconnected-(U1-PR31-PadR31)"
+      "unconnected-(U1-PU31-PadU31)" "unconnected-(U1-PW1-PadW1)" "unconnected-(U2-P10-Pad10)"
+      "unconnected-(U2-P11-Pad11)" "unconnected-(U2-P23-Pad23)" "unconnected-(U2-P24-Pad24)"
+      "unconnected-(U2-P25-Pad25)" "unconnected-(U2-P26-Pad26)" "unconnected-(U2-P27-Pad27)"
+      "unconnected-(U2-P28-Pad28)" "unconnected-(U2-P29-Pad29)" "unconnected-(U2-P30-Pad30)"
+      "unconnected-(U2-P31-Pad31)" "unconnected-(U2-P8-Pad8)" "unconnected-(U2-P9-Pad9)"
+      "unconnected-(U3-P2-Pad2)" "unconnected-(U3-P3-Pad3)" "unconnected-(U4-P10-Pad10)"
+      "unconnected-(U4-P3-Pad3)" "unconnected-(U5-P12-Pad12)" "unconnected-(U5-P14-Pad14)"
+      "unconnected-(U5-P16-Pad16)" "unconnected-(U5-P3-Pad3)" "unconnected-(U5-P7-Pad7)"
+      "unconnected-(U5-P8-Pad8)"
       (circuit
         (use_via "Via[0-3]_400:200_um")
       )
@@ -1214,12 +1198,12 @@
     )
   )
   (wiring
-    (wire (path F.Cu 200  129700 -90500  131050 -90500  131050 -91700)(net /RF_ANT_OUT)(type route))
-    (wire (path F.Cu 200  131950 -90500  134750 -90500  134750 -86650  135200 -86650)(net /RF_MATCH_MID)(type route))
-    (wire (path F.Cu 200  134750 -86650  134750 -85000)(net /RF_MATCH_MID)(type route))
-    (wire (path F.Cu 200  135650 -85000  137000 -85000)(net /RF_ANT_FEED)(type route))
+    (wire (path F.Cu 200  129700 -90500  131050 -90500  133850 -90500  133850 -82200)(net /RF_ANT_OUT)(type route))
+    (wire (path F.Cu 200  134750 -82200  135150 -82200)(net /RF_MATCH_MID)(type route))
+    (wire (path F.Cu 200  135000 -82200  135000 -82750)(net /RF_MATCH_MID)(type route))
+    (wire (path F.Cu 200  136050 -82200  137200 -82200)(net /RF_ANT_FEED)(type route))
     (wire (path F.Cu 150  125300 -88700  125300 -87600  124250 -87000)(net /NRF_DCCD)(type route))
-    (wire (path F.Cu 150  125750 -87000  126300 -87700  126300 -88300)(net /DECD)(type route))
+    (wire (path F.Cu 150  125750 -87000  126350 -87450  126300 -88300)(net /DECD)(type route))
     (wire (path F.Cu 150  125750 -87000  125750 -86350  124850 -86350  124250 -85500)(net /DECD)(type route))
     (wire (path F.Cu 150  127500 -88300  127800 -87250)(net /NRF_DCC)(type route))
     (wire (path F.Cu 150  127800 -85750  128700 -85750  128700 -88300)(net /DECR)(type route))
@@ -1254,7 +1238,7 @@
     (wire (path F.Cu 100  124500 -88700  124500 -89250)(net /DECUSB)(type route))
     (wire (path F.Cu 100  124900 -88700  125000 -89950)(net /VDD_1V8)(type route))
     (wire (path F.Cu 100  128900 -88700  129100 -88050)(net /VDD_1V8)(type route))
-    (wire (path F.Cu 100  129300 -88700  129750 -88150)(net /HFXO_XC2)(type route))
+    (wire (path F.Cu 100  129300 -88700  129700 -88150)(net /HFXO_XC2)(type route))
     (wire (path F.Cu 100  123300 -88900  122800 -88900)(net /VDD_1V8)(type route))
     (wire (path F.Cu 100  123300 -89300  122800 -89500)(net /VDD_1V8)(type route))
     (wire (path F.Cu 100  129700 -89300  130150 -89300)(net /VDD_1V8)(type route))
@@ -1294,7 +1278,7 @@
     (via "Via[0-3]_400:200_um"  124500 -89250 (net /DECUSB)(type route))
     (via "Via[0-3]_400:200_um"  125000 -89950 (net /VDD_1V8)(type route))
     (via "Via[0-3]_400:200_um"  129100 -88050 (net /VDD_1V8)(type route))
-    (via "Via[0-3]_400:200_um"  129750 -88150 (net /HFXO_XC2)(type route))
+    (via "Via[0-3]_400:200_um"  129700 -88150 (net /HFXO_XC2)(type route))
     (via "Via[0-3]_400:200_um"  122800 -88900 (net /VDD_1V8)(type route))
     (via "Via[0-3]_400:200_um"  122800 -89500 (net /VDD_1V8)(type route))
     (via "Via[0-3]_400:200_um"  130150 -89300 (net /VDD_1V8)(type route))

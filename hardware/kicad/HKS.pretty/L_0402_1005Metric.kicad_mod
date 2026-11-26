@@ -3,7 +3,7 @@
   (generator "pcbnew")
   (generator_version "8.0")
   (layer "F.Cu")
-  (descr "LQW15AN3N3C00D - 3.3 nH series RF matching inductor at keepout boundary (x=135.2 -> 137.0 A1 Pad 1, only 1.0 mm over void)")
+  (descr "LQW15AN3N3C00D - 3.3 nH series RF matching inductor at keepout boundary feeding A1 Pad 1 at top board edge (T-M3 & T-M4)")
   (property "Reference" "REF**" (at 0 -0.850 0) (layer "F.Fab") (effects (font (size 0.65 0.65) (thickness 0.11))))
   (property "Value" "L_0402_1005Metric" (at 0 0.850 0) (layer "F.Fab") (effects (font (size 0.65 0.65) (thickness 0.11))))
   (attr smd)

@@ -11,7 +11,7 @@ SN74AXC1T45DRLR,U9,HKS:SOT-563,SN74AXC1T45DRLR,Texas Instruments,1,,1.8V/3.0V,3.
 TPD4E05U06DQAR,U10,HKS:USON-10_2.5x1.0mm_P0.5mm,TPD4E05U06DQAR,Texas Instruments,1,,USB,0.42 pF flow-through ESD protection on USB D+/D- and CC1/CC2
 USB4720-03-A,J1,HKS:USB_C_Receptacle_GCT_USB4720-03-A_IP67,USB4720-03-A,GCT,1,,VBUS_5V,"IP67 mid-mount waterproof USB-C receptacle at -X_S bottom edge (A6/B6=D+, A7/B7=D-)"
 TC2050-IDC-NL,J2,HKS:Tag-Connect_TC2050-IDC-NL_2x05_P1.27mm_Vertical,TC2050-IDC-NL,Tag-Connect,1,DNP,1.8V,"Zero-profile SWD factory programming & debug footprint (pins 3, 5, 9 tied to GND)"
-2450AT18B0100001E,A1,HKS:Johanson_2450AT18B100,2450AT18B0100001E,Johanson Technology,1,,RF_50R,"2.4 GHz BLE 5.3 ceramic chip antenna at GND keepout boundary (Pad 1=50R Feed 1.0mm inside keepout, Pad 2=Isolated Mechanical Anchor NC)"
+2450AT18B0100001E,A1,HKS:Johanson_2450AT18B100,2450AT18B0100001E,Johanson Technology,1,,RF_50R,"2.4 GHz BLE 5.3 ceramic chip antenna flush at +X_S top board edge (0.40 mm from edge, Pad 1=50R Feed, Pad 2=Isolated Mechanical Anchor NC)"
 NX2016SA-32MHz,Y1,HKS:Crystal_SMD_2016-4Pin_2.0x1.6mm,NX2016SA-32MHz,NDK,1,,1.8V,32.000 MHz +-10ppm HFXO crystal right beside U1 Balls C31/B30
 FC-12M-32.768K-20ppm,Y2,HKS:Crystal_SMD_2012-2Pin_2.0x1.2mm,FC-12M-32.768K-20ppm,Epson,1,,1.8V,32.768 kHz <=20ppm LFXO crystal right beside U1 Balls N1/R1
 EVPAWCD4A,SW1,HKS:SW_SPST_EVPAW,EVPAWCD4A,Panasonic,1,,SHPHLD,0.60 mm IP67 tactile dome switch on SHPHLD & D2 cathode
@@ -24,10 +24,10 @@ LTST-C191KRKT,LD2,HKS:LED_0603_1608Metric,LTST-C191KRKT,Lite-On,1,,3.0V,Red/Ambe
 2.2uH_DFE201610E-2R2M,L2,HKS:L_2016_2016Metric,DFE201610E-2R2M,Murata,1,,3.0V,2.2 uH shielded power inductor for nPM1300 BUCK2 (3.0V)
 10uH_LQM18DN100M70L,L3,HKS:L_0603_1608Metric,LQM18DN100M70L,Murata,1,,1.8V,10 uH 0603 inductor right at nRF5340 Top Edge (Ball B10 DCCD -> Ball A15 DECD)
 10uH_LQM18DN100M70L,L4,HKS:L_0603_1608Metric_Vert,LQM18DN100M70L,Murata,1,,1.8V,"10 uH 0603 inductor right at nRF5340 Top Edge (Ball A21 DCC -> Ball A27 DECR, orthogonal 90 deg)"
-1.2pF_C_RF1,C27,HKS:C_0402_1005Metric,GJM1555C1H1R2WB01D,Murata,1,,RF_50R,C_RF1: 1.2 pF series RF DC-block/matching capacitor 1.3 mm from U1 Ball L31 ANT
-0.8pF_C_RF_SHUNT_DNI,C28,HKS:C_0402_1005Metric,GJM1555C1HR80WB01D,Murata,1,DNP,RF_50R,C_RF2: Nordic reference shunt harmonic-filter / pi-tuning pad right at U1 Ball L31 ANT exit (DNI until VNA enclosure tune)
-2.7nH_LQW15AN2N7C00D,L5,HKS:L_0402_1005Metric_Vert,LQW15AN2N7C00D,Murata,1,,RF_50R,2.7 nH shunt RF matching inductor at GND plane edge before 8x8mm keepout
-3.3nH_LQW15AN3N3C00D,L6,HKS:L_0402_1005Metric,LQW15AN3N3C00D,Murata,1,,RF_50R,"3.3 nH series RF matching inductor at keepout boundary (x=135.2 -> 137.0 A1 Pad 1, only 1.0 mm over void)"
+1.2pF_C_RF1,C27,HKS:C_0402_1005Metric,GJM1555C1H1R2WB01D,Murata,1,,RF_50R,C_RF1: 1.2 pF series RF DC-block/matching capacitor grouped directly beside L5 & L6 at antenna feed point (T-M3)
+0.8pF_C_RF_SHUNT_DNI,C28,HKS:C_0402_1005Metric,GJM1555C1HR80WB01D,Murata,1,DNP,RF_50R,C_RF2: Nordic reference shunt harmonic-filter / pi-tuning pad grouped at C27/L5/L6 feed network (DNI until VNA enclosure tune)
+2.7nH_LQW15AN2N7C00D,L5,HKS:L_0402_1005Metric_Vert,LQW15AN2N7C00D,Murata,1,,RF_50R,2.7 nH shunt RF matching inductor grouped right between C27 Pad 2 and L6 Pad 1 (0.25 mm lumped node)
+3.3nH_LQW15AN3N3C00D,L6,HKS:L_0402_1005Metric,LQW15AN3N3C00D,Murata,1,,RF_50R,3.3 nH series RF matching inductor at keepout boundary feeding A1 Pad 1 at top board edge (T-M3 & T-M4)
 10k_NTC_DNI,RT1,HKS:R_0402_1005Metric,NCP15XH103F03RC,Murata,1,DNP,PMIC_NTC,DNI backup NTC footprint (BT1 integrated 10k B=3380K NTC used)
 502535-450mAh-LiPo-Pads,BT1,HKS:Battery_Pads_3Pin_VBAT_NTC_GND,502535-450mAh-LiPo,Generic-LiPo,1,,VBAT_3.7V,3-pad solder/connector landing for 502535 450mAh LiPo + 10k NTC
 47k_1%_VSET1,R1,HKS:R_0402_1005Metric,ERJ-2RKF4702X,Panasonic,1,,0V,R_VSET1: BUCK1=1.8V VSET

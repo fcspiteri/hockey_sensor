@@ -14,9 +14,7 @@ def export_dsn(pcb_path: Path, dsn_path: Path) -> None:
     ok = pcbnew.ExportSpecctraDSN(board, str(dsn_path))
     if not ok or not dsn_path.exists():
         raise RuntimeError(f"ExportSpecctraDSN failed for {pcb_path} -> {dsn_path}")
-    # 1. Add a full-board wire_keepout + plane on In1.Cu so FreeRouting places 0 signal tracks on In1.Cu (S-M4)
-    # 2. Strip (pins ...) from /GND (connected post-route by dedicated GND vias + In1.Cu/B.Cu/F.Cu GND planes, S-C2)
-    # 3. Restrict /VDD_1V8 (pins ...) in DSN to the 17 pre-escaped U1 VDD_1V8 balls (which connect to the DSN plane so 0 ratlines and 0 fixed-via warnings; all other VDD_1V8 pads get dedicated vias to In2.Cu post-route!)
+    # 1. Strip (pins ...) from /GND (connected post-route by dedicated GND vias + In1.Cu/B.Cu/F.Cu GND planes, S-C2)
     dsn_text = dsn_path.read_text(encoding="utf-8")
     dsn_text = dsn_text.replace(
         '    (padstack "Via[0-3]_400:200_um"\n'
@@ -221,7 +219,7 @@ def _place_post_route_gnd_vias(board: "pcbnew.BOARD") -> int:
                         added += 1
             connected_pads.append((px, py, net_code))
             continue
-        if any(math.hypot(px - ovx, py - ovy) < 0.05 and onet == net_code for ovx, ovy, _ovr, onet in vias_info) or (ref == "U10" and pnum == "3") or (ref == "U4" and pnum == "15"):
+        if any(math.hypot(px - ovx, py - ovy) < 0.05 and onet == net_code for ovx, ovy, _ovr, onet in vias_info) or (ref == "U10" and pnum == "3") or (ref == "U4" and pnum == "15") or (ref == "U9" and pnum in ("2", "5")) or (ref == "U8" and pnum == "1") or (ref == "U1" and pnum in ("T2", "H2", "G1")) or (ref == "C28" and pnum == "1"):
             connected_pads.append((px, py, net_code))
             continue
         if _via_clear(px, py, ref, pnum, net_code, is_ep=True):
@@ -757,9 +755,11 @@ def _place_post_route_gnd_vias(board: "pcbnew.BOARD") -> int:
 
     # Finally add GCPW stitching via fence along the F.Cu RF feed trace + dense GND plane stitching grid AFTER all signal and pad escapes are placed
     stitch_pts = [
-        (132.50, 89.70), (133.50, 89.70), (134.10, 89.70),
-        (132.50, 91.30), (133.50, 91.30), (134.50, 91.30), (135.50, 91.30),
-        (134.05, 88.20), (134.05, 87.20), (134.05, 86.20), (134.05, 85.00),
+        (130.50, 89.70), (131.50, 89.70), (132.50, 89.70), (133.10, 89.70),
+        (130.50, 91.30), (131.50, 91.30), (132.50, 91.30), (133.50, 91.30), (134.50, 91.30),
+        (133.10, 88.50), (133.10, 87.50), (133.10, 86.50), (133.10, 85.50), (133.10, 84.50), (133.10, 83.50), (133.10, 82.50),
+        (134.60, 88.50), (134.60, 87.50), (134.60, 86.50), (134.60, 85.50), (134.60, 84.50), (134.60, 83.80),
+        (135.00, 84.10),
     ]
     for sx_i in range(117, 144, 2):
         for sy_i in range(82, 119, 2):
@@ -779,6 +779,28 @@ def import_ses(pcb_path: Path, ses_path: Path) -> None:
     # Wait: why did zone_pour_In2.Cu split earlier? Because we replaced (path In1.Cu with (path In2.Cu, which doubled the track density on In2.Cu!
     # Wait: what if we keep FreeRouting's tracks on In2.Cu, and instead route /VDD_1V8 as a net in FreeRouting OR connect /VDD_1V8 vias on In2.Cu?
     ses_text = ses_path.read_text(encoding="utf-8")
+    # Update placement block in board.ses so C27, C28, L5, L6, and MH4 match the compact lumped RF layout in generate_kicad.py (T-M3 & T-M4)
+    for old_pl, new_pl in [
+        ("(place C27 1343000 -822000 front 0)", "(place C27 1337000 -822000 front 0)"),
+        ("(place C28 1315000 -905000 front 0)", "(place C28 1337000 -850000 front 0)"),
+        ("(place C28 1337000 -835000 front 0)", "(place C28 1337000 -850000 front 0)"),
+        ("(place C28 1332000 -835000 front 0)", "(place C28 1337000 -850000 front 0)"),
+        ("(place L6 1356000 -822000 front 0)", "(place L6 1357000 -822000 front 0)"),
+        ("(place L5 1350000 -832000 front 0)", "(place L5 1347000 -835000 front 0)"),
+        ("(place MH4 1332000 -868000 front 0)", "(place MH4 1352000 -878000 front 0)"),
+        ("(place MH4 1332000 -855000 front 0)", "(place MH4 1352000 -878000 front 0)"),
+        ("(place MH4 1347000 -862000 front 0)", "(place MH4 1352000 -878000 front 0)"),
+    ]:
+        ses_text = ses_text.replace(old_pl, new_pl)
+    # Strip any stale pre-existing /RF_ANT_OUT, /RF_MATCH_MID, /RF_ANT_FEED blocks from board.ses so only generate_kicad.py's pre-routed RF tracks are used
+    for rf_net_name in ("/RF_ANT_OUT", "/RF_MATCH_MID", "/RF_ANT_FEED"):
+        idx_rf = ses_text.find(f'(net "{rf_net_name}"')
+        if idx_rf >= 0:
+            idx_next = ses_text.find("(net ", idx_rf + 10)
+            if idx_next < 0:
+                idx_next = ses_text.find("    )\n  )\n)", idx_rf)
+            if idx_next > idx_rf:
+                ses_text = ses_text[:idx_rf] + ses_text[idx_next:]
     ses_fixed = re.sub(
         r"\(path\s+(F\.Cu|In1\.Cu|In2\.Cu|B\.Cu)\s+([0-8]\d\d)\b",
         r"(path \1 900",
@@ -786,6 +808,8 @@ def import_ses(pcb_path: Path, ses_path: Path) -> None:
     )
     if ses_fixed != ses_text:
         ses_path.write_text(ses_fixed, encoding="utf-8")
+    else:
+        ses_path.write_text(ses_text, encoding="utf-8")
     board = pcbnew.LoadBoard(str(pcb_path))
     ok = pcbnew.ImportSpecctraSES(board, str(ses_path))
     if not ok:
@@ -844,7 +868,20 @@ def import_ses(pcb_path: Path, ses_path: Path) -> None:
                 math.hypot(rvx - pcbnew.ToMM(s.x), rvy - pcbnew.ToMM(s.y)) < 0.08
                 or math.hypot(rvx - pcbnew.ToMM(e.x), rvy - pcbnew.ToMM(e.y)) < 0.08
             ):
-                to_remove.append(trk)
+                # Only remove if the OTHER end of trk is a dead end (not connected to any other track or pad)
+                ox, oy = (pcbnew.ToMM(e.x), pcbnew.ToMM(e.y)) if math.hypot(rvx - pcbnew.ToMM(s.x), rvy - pcbnew.ToMM(s.y)) < 0.08 else (pcbnew.ToMM(s.x), pcbnew.ToMM(s.y))
+                other_connected = any(
+                    pnet == rvnet and math.hypot(ox - px, oy - py) < 0.15 for px, py, pnet in pad_locs
+                ) or any(
+                    t2.m_Uuid.AsString() != trk.m_Uuid.AsString()
+                    and t2.GetClass() != "PCB_VIA"
+                    and t2.GetNetCode() == rvnet
+                    and t2.GetLayer() == trk.GetLayer()
+                    and (math.hypot(ox - pcbnew.ToMM(t2.GetStart().x), oy - pcbnew.ToMM(t2.GetStart().y)) < 0.05 or math.hypot(ox - pcbnew.ToMM(t2.GetEnd().x), oy - pcbnew.ToMM(t2.GetEnd().y)) < 0.05)
+                    for t2 in all_trks
+                )
+                if not other_connected:
+                    to_remove.append(trk)
     xc2_net = board.FindNet("/HFXO_XC2") or board.FindNet("HFXO_XC2")
     xc2_c = xc2_net.GetNetCode() if xc2_net else -1
     for trk in all_trks:
@@ -924,133 +961,117 @@ def import_ses(pcb_path: Path, ses_path: Path) -> None:
                     trk.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(126.38), pcbnew.FromMM(87.40)))
                 if math.hypot(ex - 126.30, ey - 87.70) < 0.15:
                     trk.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(126.38), pcbnew.FromMM(87.40)))
-    # Open via/track escape channels for C26.2 and U10.9 before running _place_post_route_gnd_vias, and place 0.35/0.15 mm micro-vias on R2.2, U10.3, and U4.15
-    vset1_net = board.FindNet("/PMIC_VSET1")
-    vbus_net = board.FindNet("/VBUS_5V")
-    cc1_net = board.FindNet("/USB_CC1")
-    usbp_net = board.FindNet("/USB_D_P")
-    for trk in list(board.GetTracks()):
-        if trk.GetClass() == "PCB_VIA":
+    # Deterministic post-import vertex adjustments to clear sub-0.015mm clearance nudges and open GND escape channels
+    for v_net_v, ovx_v, ovy_v, nvx_v, nvy_v in [
+        ("/VDD_3V0", 128.3840, 105.4554, 128.3950, 105.4400),
+        ("/SPI4_SCK_P0.08", 124.1200, 93.6000, 124.1200, 93.6100),
+        ("/SPI4_CS_IMU_N_P0.11", 124.5800, 93.8400, 124.5800, 93.8500),
+        ("/IMU_INT1_P0.04", 124.9500, 91.5800, 124.9500, 91.6400),
+        ("/IMU_INT2_P0.05", 124.2500, 91.9700, 124.2500, 91.9950),
+    ]:
+        vn_v = board.FindNet(v_net_v)
+        if not vn_v:
             continue
-        tn = trk.GetNetCode()
-        tlay = trk.GetLayer()
-        s = trk.GetStart()
-        e = trk.GetEnd()
-        sx, sy = pcbnew.ToMM(s.x), pcbnew.ToMM(s.y)
-        ex, ey = pcbnew.ToMM(e.x), pcbnew.ToMM(e.y)
-        # 1) R2.2 (119.95, 110.20): notch /PMIC_VSET1 on In2.Cu left via (119.05, 110.35) -> (121.02, 111.342) so a 0.40/0.20 mm GND via sits cleanly on R2.2!
-        if vset1_net and tn == vset1_net.GetNetCode() and tlay == pcbnew.In2_Cu:
-            if math.hypot(sx - 119.05, sy - 109.372) < 0.05 and math.hypot(ex - 121.02, ey - 111.342) < 0.05:
-                board.Remove(trk)
-                for ax_vs, ay_vs, bx_vs, by_vs in [
-                    (119.05, 109.372, 119.05, 110.35),
-                    (119.05, 110.35, 121.02, 111.342),
-                ]:
-                    t_ext = pcbnew.PCB_TRACK(board)
-                    t_ext.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(ax_vs), pcbnew.FromMM(ay_vs)))
-                    t_ext.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(bx_vs), pcbnew.FromMM(by_vs)))
-                    t_ext.SetWidth(pcbnew.FromMM(0.09))
-                    t_ext.SetLayer(pcbnew.In2_Cu)
-                    t_ext.SetNetCode(tn)
-                    board.Add(t_ext)
-        # 2) C26.2 (121.75, 88.80): notch /VBUS_5V on In2.Cu left to x=121.15 near y=88.80
-        elif vbus_net and tn == vbus_net.GetNetCode() and tlay == pcbnew.In2_Cu:
-            if abs(sx - 121.552) < 0.03 and abs(ex - 121.552) < 0.03 and max(sy, ey) > 100.0 and min(sy, ey) < 90.0:
-                board.Remove(trk)
-                for ay_v, by_v, ax_v, bx_v in [
-                    (106.2215, 89.60, 121.5521, 121.5521),
-                    (89.60, 89.20, 121.5521, 121.150),
-                    (89.20, 88.30, 121.150, 121.150),
-                    (88.30, 87.925, 121.150, 121.5521),
-                ]:
-                    tv = pcbnew.PCB_TRACK(board)
-                    tv.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(ax_v), pcbnew.FromMM(ay_v)))
-                    tv.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(bx_v), pcbnew.FromMM(by_v)))
-                    tv.SetWidth(pcbnew.FromMM(0.09))
-                    tv.SetLayer(pcbnew.In2_Cu)
-                    tv.SetNetCode(tn)
-                    board.Add(tv)
-        # 3) U10.3 (128.85, 111.60) & U4.15 (136.40, 99.55): notch /USB_CC1 on In1.Cu away from (128.85, 111.60), notch /I2C0_SDA_1V8_P1.02 on In1.Cu 0.08 mm right of (136.75, 99.55), and hop /USB_D_N on B.Cu between (126.15, 111.61) and (127.75, 112.90) so U10.3 connects straight left to D1.2 (128.10, 111.60)!
-        elif sda_net_c := (board.FindNet("/I2C0_SDA_1V8_P1.02").GetNetCode() if board.FindNet("/I2C0_SDA_1V8_P1.02") else -1):
-            if tn == sda_net_c and tlay == pcbnew.In1_Cu:
-                if math.hypot(sx - 137.4155, sy - 99.3959) < 0.05 and math.hypot(ex - 135.864, ey - 100.948) < 0.05:
-                    board.Remove(trk)
-                    for ax_sd, ay_sd, bx_sd, by_sd in [
-                        (137.4155, 99.3959, 137.4155, 99.80),
-                        (137.4155, 99.80, 135.864, 100.948),
-                    ]:
-                        t_sd = pcbnew.PCB_TRACK(board)
-                        t_sd.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(ax_sd), pcbnew.FromMM(ay_sd)))
-                        t_sd.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(bx_sd), pcbnew.FromMM(by_sd)))
-                        t_sd.SetWidth(pcbnew.FromMM(0.09))
-                        t_sd.SetLayer(pcbnew.In1_Cu)
-                        t_sd.SetNetCode(tn)
-                        board.Add(t_sd)
-        if cc1_net and tn == cc1_net.GetNetCode() and tlay == pcbnew.In1_Cu:
-            if math.hypot(sx - 127.313, sy - 110.299) < 0.05 and math.hypot(ex - 129.154, ey - 112.140) < 0.05:
-                trk.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(127.313), pcbnew.FromMM(112.140)))
-                t_cc = pcbnew.PCB_TRACK(board)
-                t_cc.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(127.313), pcbnew.FromMM(112.140)))
-                t_cc.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(129.154), pcbnew.FromMM(112.140)))
-                t_cc.SetWidth(pcbnew.FromMM(0.09))
-                t_cc.SetLayer(pcbnew.In1_Cu)
-                t_cc.SetNetCode(tn)
-                board.Add(t_cc)
-        elif usbn_net_c := (board.FindNet("/USB_D_N").GetNetCode() if board.FindNet("/USB_D_N") else -1):
-            if tn == usbn_net_c and tlay == pcbnew.F_Cu:
-                if abs(sx - 128.4897) < 0.03 and abs(ex - 128.5045) < 0.03 and 111.15 <= min(sy, ey) and max(sy, ey) <= 114.15:
-                    board.Remove(trk)
-                elif math.hypot(sx - 128.4674, sy - 111.1629) < 0.03 and math.hypot(ex - 126.5967, ey - 111.1629) < 0.03:
-                    for vx_un, vy_un in [(126.15, 111.61), (128.50, 114.40)]:
-                        v_un = pcbnew.PCB_VIA(board)
-                        v_un.SetPosition(pcbnew.VECTOR2I(pcbnew.FromMM(vx_un), pcbnew.FromMM(vy_un)))
-                        v_un.SetWidth(pcbnew.FromMM(0.40))
-                        v_un.SetDrill(pcbnew.FromMM(0.20))
-                        v_un.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu)
-                        v_un.SetNetCode(tn)
-                        board.Add(v_un)
-                    for ax_un, ay_un, bx_un, by_un, lay_un in [
-                        (126.15, 111.61, 128.50, 114.40, pcbnew.B_Cu),
-                        (128.50, 114.40, 128.4897, 114.0897, pcbnew.F_Cu),
-                    ]:
-                        t_un = pcbnew.PCB_TRACK(board)
-                        t_un.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(ax_un), pcbnew.FromMM(ay_un)))
-                        t_un.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(bx_un), pcbnew.FromMM(by_un)))
-                        t_un.SetWidth(pcbnew.FromMM(0.09))
-                        t_un.SetLayer(lay_un)
-                        t_un.SetNetCode(tn)
-                        board.Add(t_un)
-        # 4) U10.9 (131.15, 111.20): shift /USB_D_P on F.Cu right from x=131.714 to x=132.15 only down to y=112.30 (staying well above J1.B4 at y=113.50!)
-        if usbp_net and tn == usbp_net.GetNetCode() and tlay == pcbnew.F_Cu:
-            if math.hypot(sx - 131.7144, sy - 110.80) < 0.03 and math.hypot(ex - 131.526, ey - 110.80) < 0.03:
-                trk.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(132.15), pcbnew.FromMM(110.80)))
-            elif math.hypot(sx - 131.7144, sy - 110.80) < 0.03 and math.hypot(ex - 131.7144, ey - 113.755) < 0.03:
-                board.Remove(trk)
-                for ax_dp, ay_dp, bx_dp, by_dp in [
-                    (132.15, 110.80, 132.15, 112.30),
-                    (132.15, 112.30, 131.7144, 112.60),
-                    (131.7144, 112.60, 131.7144, 113.755),
-                ]:
-                    t_dp = pcbnew.PCB_TRACK(board)
-                    t_dp.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(ax_dp), pcbnew.FromMM(ay_dp)))
-                    t_dp.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(bx_dp), pcbnew.FromMM(by_dp)))
-                    t_dp.SetWidth(pcbnew.FromMM(0.09))
-                    t_dp.SetLayer(pcbnew.F_Cu)
-                    t_dp.SetNetCode(tn)
-                    board.Add(t_dp)
+        vc_v = vn_v.GetNetCode()
+        for t_i in board.GetTracks():
+            if t_i.GetNetCode() != vc_v:
+                continue
+            if t_i.GetClass() == "PCB_VIA":
+                vp_i = t_i.GetPosition()
+                if math.hypot(pcbnew.ToMM(vp_i.x) - ovx_v, pcbnew.ToMM(vp_i.y) - ovy_v) < 0.01:
+                    t_i.SetPosition(pcbnew.VECTOR2I(pcbnew.FromMM(nvx_v), pcbnew.FromMM(nvy_v)))
+            else:
+                s_i, e_i = t_i.GetStart(), t_i.GetEnd()
+                if math.hypot(pcbnew.ToMM(s_i.x) - ovx_v, pcbnew.ToMM(s_i.y) - ovy_v) < 0.01:
+                    t_i.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(nvx_v), pcbnew.FromMM(nvy_v)))
+                if math.hypot(pcbnew.ToMM(e_i.x) - ovx_v, pcbnew.ToMM(e_i.y) - ovy_v) < 0.01:
+                    t_i.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(nvx_v), pcbnew.FromMM(nvy_v)))
+    vertex_shifts = [
+        ("/SW1_BUCK1", pcbnew.F_Cu, 120.6051, 107.3852, 120.6250, 107.3650),
+        ("/PMIC_INT_P1.05", pcbnew.F_Cu, 121.5766, 107.7811, 121.5550, 107.7811),
+        ("/PMIC_INT_P1.05", pcbnew.F_Cu, 121.5284, 107.8293, 121.5200, 107.8293),
+        ("/PMIC_INT_P1.05", pcbnew.F_Cu, 121.5586, 107.4553, 121.5450, 107.4553),
+        ("/QSPI_IO1_MISO_P0.14", pcbnew.In1_Cu, 124.5095, 93.4977, 124.5050, 93.5000),
+        ("/QSPI_IO1_MISO_P0.14", pcbnew.In1_Cu, 124.8362, 93.4977, 124.8362, 93.5000),
+        ("/VDD_1V8", pcbnew.F_Cu, 138.5902, 106.1604, 138.5902, 106.1850),
+        ("/VDD_1V8", pcbnew.F_Cu, 139.2604, 106.1784, 139.2604, 106.2000),
+        ("/PMIC_SHPHLD", pcbnew.F_Cu, 125.5119, 110.5867, 125.5150, 110.5867),
+        ("/PMIC_SHPHLD", pcbnew.F_Cu, 125.5299, 110.5867, 125.5150, 110.5867),
+        ("/PMIC_SHPHLD", pcbnew.F_Cu, 125.5299, 110.9466, 125.5150, 110.9466),
+        ("/I2C0_SCL_3V0", pcbnew.F_Cu, 139.7758, 97.0922, 139.7758, 97.1250),
+        ("/I2C0_SCL_3V0", pcbnew.F_Cu, 139.7437, 97.1423, 139.7437, 97.1550),
+        ("/PCA9306_EN", pcbnew.F_Cu, 138.9186, 99.1631, 138.8950, 99.1850),
+        ("/PCA9306_EN", pcbnew.F_Cu, 139.2212, 99.4657, 139.2212, 99.4900),
+        ("/PCA9306_EN", pcbnew.F_Cu, 139.9412, 99.4657, 139.9412, 99.4900),
+        ("/USB_CC1", pcbnew.F_Cu, 128.4606, 111.7017, 128.4606, 111.7150),
+        ("/USB_CC1", pcbnew.F_Cu, 128.6435, 111.8846, 128.6435, 111.8950),
+        ("/VDD_1V8", pcbnew.F_Cu, 136.8707, 105.7813, 136.8450, 105.7813),
+        ("/VDD_1V8", pcbnew.F_Cu, 136.8527, 105.8840, 136.8350, 105.8840),
+        ("/VDD_1V8", pcbnew.F_Cu, 136.8760, 105.9073, 136.8550, 105.9073),
+        ("/VDD_1V8", pcbnew.F_Cu, 128.5123, 105.8046, 128.5250, 105.8250),
+        ("/VDD_1V8", pcbnew.F_Cu, 128.6633, 105.6536, 128.6700, 105.6600),
+        ("/IMU_INT1_P0.04", pcbnew.In2_Cu, 126.8494, 91.5800, 126.8494, 91.6400),
+    ]
+    for v_net_name, v_lay, ox, oy, nx, ny in vertex_shifts:
+        vn_obj = board.FindNet(v_net_name)
+        if not vn_obj:
+            continue
+        vc = vn_obj.GetNetCode()
+        for t_i in board.GetTracks():
+            if t_i.GetClass() == "PCB_VIA" or t_i.GetNetCode() != vc or t_i.GetLayer() != v_lay:
+                continue
+            s_i = t_i.GetStart()
+            e_i = t_i.GetEnd()
+            if math.hypot(pcbnew.ToMM(s_i.x) - ox, pcbnew.ToMM(s_i.y) - oy) < 0.008:
+                t_i.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(nx), pcbnew.FromMM(ny)))
+            if math.hypot(pcbnew.ToMM(e_i.x) - ox, pcbnew.ToMM(e_i.y) - oy) < 0.008:
+                t_i.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(nx), pcbnew.FromMM(ny)))
+    # Re-add pre-routed F.Cu RF tracks after ImportSpecctraSES (since ImportSpecctraSES wipes pre-existing F.Cu tracks!)
+    for rf_net_s, rf_segs in [
+        ("/RF_ANT_OUT", [(129.700, 90.500, 134.150, 90.500), (134.150, 90.500, 134.150, 85.000), (134.150, 85.000, 134.150, 82.800), (134.150, 82.800, 133.250, 82.800), (133.250, 82.800, 133.250, 82.200)]),
+        ("/RF_MATCH_MID", [(134.150, 82.200, 135.250, 82.200), (134.700, 82.200, 134.700, 83.050)]),
+        ("/RF_ANT_FEED", [(136.150, 82.200, 137.200, 82.200)]),
+    ]:
+        rfn_obj = board.FindNet(rf_net_s)
+        if rfn_obj:
+            rf_c = rfn_obj.GetNetCode()
+            for ax_r, ay_r, bx_r, by_r in rf_segs:
+                t_rf = pcbnew.PCB_TRACK(board)
+                t_rf.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(ax_r), pcbnew.FromMM(ay_r)))
+                t_rf.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(bx_r), pcbnew.FromMM(by_r)))
+                t_rf.SetWidth(pcbnew.FromMM(0.20))
+                t_rf.SetLayer(pcbnew.F_Cu)
+                t_rf.SetNetCode(rf_c)
+                board.Add(t_rf)
+    # Connect U1.T2 (123.70, 91.50), U1.H2 (123.70, 89.90), U1.EP (127.30, 91.20), C28.1 (133.25, 85.00), U10.3 (128.85, 111.60), U4.15 (136.40, 99.55), U9.5 (135.25, 95.20), and U8.1 (137.45, 97.45) to GND!
     if gnd_net:
         gc_m = gnd_net.GetNetCode()
-        for vx_m, vy_m in [(119.95, 110.20), (136.79, 99.55)]:
-            v_m = pcbnew.PCB_VIA(board)
-            v_m.SetPosition(pcbnew.VECTOR2I(pcbnew.FromMM(vx_m), pcbnew.FromMM(vy_m)))
-            v_m.SetWidth(pcbnew.FromMM(0.40))
-            v_m.SetDrill(pcbnew.FromMM(0.20))
-            v_m.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu)
-            v_m.SetNetCode(gc_m)
-            board.Add(v_m)
+        # 1) U10.3 (128.85, 111.60) -> U10.8 (131.15, 111.60) on F.Cu across U10 center
+        # 2) U4.15 (136.40, 99.55) -> (135.43, 99.55) -> (135.43, 99.845) [inside U4 body on F.Cu to U4.12/13 GND via!]
+        # 3) U9.5 (135.25, 95.20) -> (134.50, 95.20) -> U9.2 (133.75, 95.20) on F.Cu + 0.40/0.20 mm GND via at (134.50, 95.20)
+        # 4) U8.1 (137.45, 97.45) -> (138.25, 97.45) on F.Cu + 0.40/0.20 mm GND via at (138.25, 97.45)
+        # 5) U1.T2 (123.70, 91.50) -> (124.42, 91.42) -> (124.60, 91.25) -> (124.60, 90.75) -> (124.52, 90.32) on F.Cu + 0.40/0.20 mm GND via at (124.52, 90.32)
+        # 6) U1.H2 (123.70, 89.90) -> U1.F2 (123.70, 89.50) -> U1.G1 (123.30, 89.70) & U1.K2 (123.70, 90.30) -> (124.52, 90.32) on F.Cu
+        # 7) U1.EP (127.30, 91.20) -> (127.00, 90.00) on F.Cu + 0.40/0.20 mm GND via at (127.00, 90.00)
+        # 8) C28.1 (133.25, 85.00) -> (132.75, 85.00) on F.Cu + 0.40/0.20 mm GND via at (132.75, 85.00)
         for ax_g, ay_g, bx_g, by_g in [
-            (136.40, 99.55, 136.79, 99.55),
-            (128.85, 111.60, 128.10, 111.60),
+            (128.85, 111.60, 131.15, 111.60),
+            (136.40, 99.55, 135.43, 99.55),
+            (135.43, 99.55, 135.43, 99.845),
+            (135.25, 95.20, 134.50, 95.20),
+            (134.50, 95.20, 133.75, 95.20),
+            (137.45, 97.45, 138.25, 97.45),
+            (123.70, 91.50, 123.80, 91.453),
+            (123.80, 91.453, 124.46, 91.453),
+            (124.46, 91.453, 124.60, 91.25),
+            (124.60, 91.25, 124.60, 90.75),
+            (124.60, 90.75, 124.52, 90.32),
+            (123.70, 90.30, 124.52, 90.32),
+            (123.70, 90.30, 123.70, 89.90),
+            (123.70, 89.90, 123.70, 89.50),
+            (123.70, 89.50, 123.30, 89.70),
+            (127.30, 91.20, 127.00, 90.00),
+            (133.25, 85.00, 132.75, 85.00),
         ]:
             t_gm = pcbnew.PCB_TRACK(board)
             t_gm.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(ax_g), pcbnew.FromMM(ay_g)))
@@ -1059,9 +1080,195 @@ def import_ses(pcb_path: Path, ses_path: Path) -> None:
             t_gm.SetLayer(pcbnew.F_Cu)
             t_gm.SetNetCode(gc_m)
             board.Add(t_gm)
+        for vx_g, vy_g in [(134.50, 95.20), (138.25, 97.45), (124.52, 90.32), (127.00, 90.00), (132.75, 85.00)]:
+            v_g = pcbnew.PCB_VIA(board)
+            v_g.SetPosition(pcbnew.VECTOR2I(pcbnew.FromMM(vx_g), pcbnew.FromMM(vy_g)))
+            v_g.SetWidth(pcbnew.FromMM(0.40))
+            v_g.SetDrill(pcbnew.FromMM(0.20))
+            v_g.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu)
+            v_g.SetNetCode(gc_m)
+            board.Add(v_g)
+    # Re-route U1.V2 (/IMU_INT1_P0.04) around U1.T2 and U1.X2 (/IMU_INT2_P0.05) around U1.V2:
+    for net_r_name, x_hi_r, new_segs_r in [
+        ("/IMU_INT1_P0.04", 125.00, [(123.70, 91.90, 124.12, 91.64), (124.12, 91.64, 124.95, 91.64)]),
+        ("/IMU_INT2_P0.05", 124.30, [(123.70, 92.30, 124.25, 91.995)]),
+    ]:
+        nr_obj = board.FindNet(net_r_name)
+        if nr_obj:
+            nr_c = nr_obj.GetNetCode()
+            for t_i in list(board.GetTracks()):
+                if t_i.GetClass() != "PCB_VIA" and t_i.GetNetCode() == nr_c and t_i.GetLayer() == pcbnew.F_Cu:
+                    s_i, e_i = t_i.GetStart(), t_i.GetEnd()
+                    if 123.65 <= pcbnew.ToMM(s_i.x) <= x_hi_r and 91.4 <= pcbnew.ToMM(s_i.y) <= 92.35 and 123.65 <= pcbnew.ToMM(e_i.x) <= x_hi_r and 91.4 <= pcbnew.ToMM(e_i.y) <= 92.35:
+                        board.Remove(t_i)
+            for ax_r, ay_r, bx_r, by_r in new_segs_r:
+                t_nr = pcbnew.PCB_TRACK(board)
+                t_nr.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(ax_r), pcbnew.FromMM(ay_r)))
+                t_nr.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(bx_r), pcbnew.FromMM(by_r)))
+                t_nr.SetWidth(pcbnew.FromMM(0.09))
+                t_nr.SetLayer(pcbnew.F_Cu)
+                t_nr.SetNetCode(nr_c)
+                board.Add(t_nr)
+    # Re-route /MAG_INT_3V0 near U9 using a short In1.Cu bridge around U9's center GND via (134.50, 95.20): U9.4 (135.25, 95.70) -> (134.80, 95.70) [via] -> In1.Cu -> (134.90, 95.20) -> (135.30, 94.00) [via] -> F.Cu -> (135.7058, 93.6858)
+    mag_3v0_net = board.FindNet("/MAG_INT_3V0")
+    if mag_3v0_net:
+        m3_c = mag_3v0_net.GetNetCode()
+        for t_i in list(board.GetTracks()):
+            if t_i.GetClass() != "PCB_VIA" and t_i.GetNetCode() == m3_c and t_i.GetLayer() == pcbnew.F_Cu:
+                s_i, e_i = t_i.GetStart(), t_i.GetEnd()
+                sx_i, sy_i = pcbnew.ToMM(s_i.x), pcbnew.ToMM(s_i.y)
+                ex_i, ey_i = pcbnew.ToMM(e_i.x), pcbnew.ToMM(e_i.y)
+                if (134.8 <= sx_i <= 135.8 and 93.65 <= sy_i <= 95.8) and (134.8 <= ex_i <= 135.8 and 93.65 <= ey_i <= 95.8):
+                    board.Remove(t_i)
+        for ax_3, ay_3, bx_3, by_3, lay_3 in [
+            (135.2500, 95.7000, 134.8000, 95.7000, pcbnew.F_Cu),
+            (134.8000, 95.7000, 134.9000, 95.2000, pcbnew.In1_Cu),
+            (134.9000, 95.2000, 135.3000, 94.0000, pcbnew.In1_Cu),
+            (135.3000, 94.0000, 135.7058, 93.6858, pcbnew.F_Cu),
+        ]:
+            t_m3 = pcbnew.PCB_TRACK(board)
+            t_m3.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(ax_3), pcbnew.FromMM(ay_3)))
+            t_m3.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(bx_3), pcbnew.FromMM(by_3)))
+            t_m3.SetWidth(pcbnew.FromMM(0.09))
+            t_m3.SetLayer(lay_3)
+            t_m3.SetNetCode(m3_c)
+            board.Add(t_m3)
+        for vx_3, vy_3 in [(134.8000, 95.7000), (135.3000, 94.0000)]:
+            v_3 = pcbnew.PCB_VIA(board)
+            v_3.SetPosition(pcbnew.VECTOR2I(pcbnew.FromMM(vx_3), pcbnew.FromMM(vy_3)))
+            v_3.SetWidth(pcbnew.FromMM(0.40))
+            v_3.SetDrill(pcbnew.FromMM(0.20))
+            v_3.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu)
+            v_3.SetNetCode(m3_c)
+            board.Add(v_3)
+    # Also route /MAG_INT_1V8_P1.01 near U9.3 (133.75, 95.70) directly to B.Cu via at (134.1104, 95.70): U9.3 (133.75, 95.70) -> (134.1104, 95.70) [via] -> B.Cu -> (134.1104, 94.3137) [removing old via at (134.1104, 94.3137)!]
+    mag_int_net = board.FindNet("/MAG_INT_1V8_P1.01")
+    if mag_int_net:
+        mc_i = mag_int_net.GetNetCode()
+        for t_i in list(board.GetTracks()):
+            if t_i.GetNetCode() == mc_i:
+                if t_i.GetClass() == "PCB_VIA":
+                    vp_i = t_i.GetPosition()
+                    if math.hypot(pcbnew.ToMM(vp_i.x) - 134.1104, pcbnew.ToMM(vp_i.y) - 94.3137) < 0.05:
+                        t_i.SetPosition(pcbnew.VECTOR2I(pcbnew.FromMM(134.1104), pcbnew.FromMM(95.7000)))
+                elif t_i.GetLayer() == pcbnew.F_Cu:
+                    s_i, e_i = t_i.GetStart(), t_i.GetEnd()
+                    sx_i, sy_i = pcbnew.ToMM(s_i.x), pcbnew.ToMM(s_i.y)
+                    ex_i, ey_i = pcbnew.ToMM(e_i.x), pcbnew.ToMM(e_i.y)
+                    if 133.7 <= sx_i <= 134.2 and 94.25 <= sy_i <= 95.75 and 133.7 <= ex_i <= 134.2 and 94.25 <= ey_i <= 95.75:
+                        board.Remove(t_i)
+        for ax_m, ay_m, bx_m, by_m, lay_m in [
+            (133.7500, 95.7000, 134.1104, 95.7000, pcbnew.F_Cu),
+            (134.1104, 95.7000, 134.1104, 94.3137, pcbnew.B_Cu),
+        ]:
+            t_mp = pcbnew.PCB_TRACK(board)
+            t_mp.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(ax_m), pcbnew.FromMM(ay_m)))
+            t_mp.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(bx_m), pcbnew.FromMM(by_m)))
+            t_mp.SetWidth(pcbnew.FromMM(0.09))
+            t_mp.SetLayer(lay_m)
+            t_mp.SetNetCode(mc_i)
+            board.Add(t_mp)
+    # Re-route /I2C0_SCL_1V8_P1.03 near U8 around U8.1 (137.45, 97.45) and GND via (138.25, 97.45)
+    scl18_net = board.FindNet("/I2C0_SCL_1V8_P1.03")
+    if scl18_net:
+        s18_c = scl18_net.GetNetCode()
+        for t_i in list(board.GetTracks()):
+            if t_i.GetClass() != "PCB_VIA" and t_i.GetNetCode() == s18_c and t_i.GetLayer() == pcbnew.F_Cu:
+                s_i, e_i = t_i.GetStart(), t_i.GetEnd()
+                sx_i, sy_i = pcbnew.ToMM(s_i.x), pcbnew.ToMM(s_i.y)
+                ex_i, ey_i = pcbnew.ToMM(e_i.x), pcbnew.ToMM(e_i.y)
+                if (136.8 <= sx_i <= 138.0 and 97.0 <= sy_i <= 98.7) and (136.8 <= ex_i <= 138.0 and 97.0 <= ey_i <= 98.7) and not (sy_i > 98.4 and ey_i > 98.4):
+                    board.Remove(t_i)
+        for ax_s, ay_s, bx_s, by_s in [
+            (137.8809, 98.6745, 137.8809, 97.8000),
+            (137.8809, 97.8000, 138.6000, 97.8000),
+            (138.6000, 97.8000, 138.6000, 97.1000),
+            (138.6000, 97.1000, 137.1406, 97.1000),
+            (137.1406, 97.1000, 136.8665, 97.4471),
+        ]:
+            t_s18 = pcbnew.PCB_TRACK(board)
+            t_s18.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(ax_s), pcbnew.FromMM(ay_s)))
+            t_s18.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(bx_s), pcbnew.FromMM(by_s)))
+            t_s18.SetWidth(pcbnew.FromMM(0.09))
+            t_s18.SetLayer(pcbnew.F_Cu)
+            t_s18.SetNetCode(s18_c)
+            board.Add(t_s18)
     pcbnew.SaveBoard(str(pcb_path), board)
     board = pcbnew.LoadBoard(str(pcb_path))
     added_vias = _place_post_route_gnd_vias(board)
+    # Evacuate In1.Cu signal segments onto B.Cu or In2.Cu using exact segment-segment intersection + endpoint distance checks (T-M5)
+    def _ccw(ax: float, ay: float, bx: float, by: float, cx: float, cy: float) -> float:
+        return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+
+    def _exact_seg_seg_dist(ax1: float, ay1: float, ax2: float, ay2: float, bx1: float, by1: float, bx2: float, by2: float) -> float:
+        d1 = _ccw(ax1, ay1, ax2, ay2, bx1, by1)
+        d2 = _ccw(ax1, ay1, ax2, ay2, bx2, by2)
+        d3 = _ccw(bx1, by1, bx2, by2, ax1, ay1)
+        d4 = _ccw(bx1, by1, bx2, by2, ax2, ay2)
+        if ((d1 > 0 and d2 < 0) or (d1 < 0 and d2 > 0)) and ((d3 > 0 and d4 < 0) or (d3 < 0 and d4 > 0)):
+            return 0.0
+        return min(
+            _seg_dist(ax1, ay1, bx1, by1, bx2, by2),
+            _seg_dist(ax2, ay2, bx1, by1, bx2, by2),
+            _seg_dist(bx1, by1, ax1, ay1, ax2, ay2),
+            _seg_dist(bx2, by2, ax1, ay1, ax2, ay2),
+        )
+
+    all_trks_ev = [t for t in board.GetTracks() if t.GetClass() != "PCB_VIA"]
+    in1_trks_ev = [t for t in all_trks_ev if t.GetLayer() == pcbnew.In1_Cu]
+    in2_trks_ev = [t for t in all_trks_ev if t.GetLayer() == pcbnew.In2_Cu]
+    bcu_trks_ev = [t for t in all_trks_ev if t.GetLayer() == pcbnew.B_Cu]
+    evac_bcu = 0
+    evac_in2 = 0
+    # Only move entire net chains on In1.Cu between vias so no mid-chain layer breaks occur!
+    by_net_in1: dict[int, list["pcbnew.PCB_TRACK"]] = {}
+    for t_ev in in1_trks_ev:
+        by_net_in1.setdefault(t_ev.GetNetCode(), []).append(t_ev)
+    vias_xy_net = [
+        (pcbnew.ToMM(v.GetPosition().x), pcbnew.ToMM(v.GetPosition().y), v.GetNetCode())
+        for v in board.GetTracks() if v.GetClass() == "PCB_VIA"
+    ]
+    for net_e, net_segs in by_net_in1.items():
+        # Group connected In1.Cu segments of net_e into chains terminated at vias
+        ok_all_b = True
+        for t_ev in net_segs:
+            s_ev, e_ev = t_ev.GetStart(), t_ev.GetEnd()
+            x1_e, y1_e = pcbnew.ToMM(s_ev.x), pcbnew.ToMM(s_ev.y)
+            x2_e, y2_e = pcbnew.ToMM(e_ev.x), pcbnew.ToMM(e_ev.y)
+            r_e = pcbnew.ToMM(t_ev.GetWidth()) / 2.0
+            if not all(
+                _exact_seg_seg_dist(x1_e, y1_e, x2_e, y2_e, pcbnew.ToMM(o.GetStart().x), pcbnew.ToMM(o.GetStart().y), pcbnew.ToMM(o.GetEnd().x), pcbnew.ToMM(o.GetEnd().y))
+                >= r_e + pcbnew.ToMM(o.GetWidth()) / 2.0 + 0.095
+                for o in bcu_trks_ev if o.GetNetCode() != net_e
+            ):
+                ok_all_b = False
+                break
+        if ok_all_b:
+            for t_ev in net_segs:
+                t_ev.SetLayer(pcbnew.B_Cu)
+                bcu_trks_ev.append(t_ev)
+                evac_bcu += 1
+            continue
+        ok_all_i2 = True
+        for t_ev in net_segs:
+            s_ev, e_ev = t_ev.GetStart(), t_ev.GetEnd()
+            x1_e, y1_e = pcbnew.ToMM(s_ev.x), pcbnew.ToMM(s_ev.y)
+            x2_e, y2_e = pcbnew.ToMM(e_ev.x), pcbnew.ToMM(e_ev.y)
+            r_e = pcbnew.ToMM(t_ev.GetWidth()) / 2.0
+            if not all(
+                _exact_seg_seg_dist(x1_e, y1_e, x2_e, y2_e, pcbnew.ToMM(o.GetStart().x), pcbnew.ToMM(o.GetStart().y), pcbnew.ToMM(o.GetEnd().x), pcbnew.ToMM(o.GetEnd().y))
+                >= r_e + pcbnew.ToMM(o.GetWidth()) / 2.0 + 0.095
+                for o in in2_trks_ev if o.GetNetCode() != net_e
+            ):
+                ok_all_i2 = False
+                break
+        if ok_all_i2:
+            for t_ev in net_segs:
+                t_ev.SetLayer(pcbnew.In2_Cu)
+                in2_trks_ev.append(t_ev)
+                evac_in2 += 1
+            continue
+    print(f"IN1_EVACUATED bcu={evac_bcu} in2={evac_in2} remaining_in1={len(in1_trks_ev) - evac_bcu - evac_in2}")
     pcbnew.SaveBoard(str(pcb_path), board)
     # Add and fill the solid F.Cu (GND), In1.Cu (GND), B.Cu (GND), and In2.Cu (VDD_1V8) copper pours
     _add_copper_pour_zones(pcb_path)

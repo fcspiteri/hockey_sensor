@@ -3,7 +3,7 @@
   (generator "pcbnew")
   (generator_version "8.0")
   (layer "F.Cu")
-  (descr "2450AT18B0100001E - 2.4 GHz BLE 5.3 ceramic chip antenna at GND keepout boundary (Pad 1=50R Feed 1.0mm inside keepout, Pad 2=Isolated Mechanical Anchor NC)")
+  (descr "2450AT18B0100001E - 2.4 GHz BLE 5.3 ceramic chip antenna flush at +X_S top board edge (0.40 mm from edge, Pad 1=50R Feed, Pad 2=Isolated Mechanical Anchor NC)")
   (property "Reference" "REF**" (at 0 -1.400 0) (layer "F.Fab") (effects (font (size 0.65 0.65) (thickness 0.11))))
   (property "Value" "Johanson_2450AT18B100" (at 0 1.400 0) (layer "F.Fab") (effects (font (size 0.65 0.65) (thickness 0.11))))
   (attr smd)

@@ -318,16 +318,21 @@ def _nrf5340_aqfn94_pads(ball_nets: dict[str, str]) -> tuple[tuple[str, float, f
 
 
 def build_placements() -> list[ComponentPlacement]:
-    # U1: Official Nordic nRF5340-QKAA 94-ball + EP aQFN-94 (S-C1 & C4 resolved)
-    # All 19 VDD balls + VDDH (E1) tied to VDD_1V8 (Normal Voltage Mode), EP=GND,
-    # A13=DECA, A15=DECD, A23=DECN, A27=DECR, B6=DECUSB, G31=DECRF, B10=NRF_DCCD, A21=NRF_DCC, L31=RF_ANT_OUT
+    # U1: Official Nordic nRF5340-QKAA 94-ball + EP aQFN-94 (S-C1, C4 & T-M1 resolved)
+    # All 16 VDD balls + VDDH (E1) tied to VDD_1V8 (Normal Voltage Mode),
+    # EP + all 11 official VSS/VSS_PA/ground-connected NC balls (A25, AG31, B12, B26, D2, F2, G1, H2, J31=VSS_PA, K2, T2) tied to GND,
+    # A13=DECA (C26 4.7uF), A15=DECD (L3 + C24 4.7uF), A23=DECN (C1 100nF), A27=DECR (L4 + C25 4.7uF),
+    # B6=DECUSB (C22 4.7uF), G31=DECRF (C2 100nF), B10=NRF_DCCD, A21=NRF_DCC, L31=RF_ANT_OUT
     u1_vdd_balls = (
         "A19", "AC1", "AG1", "AJ31", "AL3", "AL7", "AL11", "AL17", "AL25",
         "B8", "B28", "C1", "E1", "E31", "L1", "N31", "U1",
     )
+    u1_gnd_balls = (
+        "EP", "A25", "AG31", "B12", "B26", "D2", "F2", "G1", "H2", "J31", "K2", "T2",
+    )
     u1_nets: dict[str, str] = {b: "VDD_1V8" for b in u1_vdd_balls}
+    u1_nets.update({b: "GND" for b in u1_gnd_balls})
     u1_nets.update({
-        "EP": "GND",
         "A5": "VBUS_5V",
         "A13": "DECA",
         "A15": "DECD",
@@ -376,40 +381,46 @@ def build_placements() -> list[ComponentPlacement]:
         "W31": "SWDCLK",
         "AC31": "NRESET",
     })
-    # U2: nPM1300-QEAA-R QFN-32 (complete 32-pin + EP mapping; unused GPIO1..4/LED0..2 pins 22-28 left NC)
+    # U2: nPM1300-QEAA-R QFN-32 (Exact Nordic nPM1300 Product Specification QFN-32 pin table — T-M2 resolved)
+    #   1=VOUT1(VDD_1V8), 2=PVSS1(GND), 3=SW1(SW1_BUCK1), 4=PVDD(VSYS), 5=SW2(SW2_BUCK2), 6=PVSS2(GND),
+    #   7=GPIO0(PMIC_INT_P1.05), 8=GPIO1(NC), 9=GPIO2(NC), 10=GPIO3(NC), 11=GPIO4(NC), 12=VDDIO(VDD_1V8),
+    #   13=SDA(I2C2_PMIC_SDA_P0.23), 14=SCL(I2C2_PMIC_SCL_P0.24), 15=SHPHLD(PMIC_SHPHLD),
+    #   16=VSET2(PMIC_VSET2), 17=VSET1(PMIC_VSET1), 18=NTC(PMIC_NTC), 19=VBAT, 20=VSYS,
+    #   21=VBUS(VBUS_5V), 22=VBUSOUT(VBUS_5V), 23..31=NC(CC1/CC2/LED0..2/LSIN1..2/LSOUT1..2 unused),
+    #   32=VOUT2(VDD_3V0), EP=AVSS(GND)
     u2_nets = {
-        "1": "VBUS_5V",
-        "2": "VBUS_5V",
-        "3": "VBAT",
-        "4": "PMIC_NTC",
-        "5": "VSYS",
-        "6": "VSYS",
-        "7": "SW1_BUCK1",
-        "8": "GND",
-        "9": "VDD_1V8",
-        "10": "PMIC_VSET1",
-        "11": "PMIC_VSET2",
-        "12": "VDD_3V0",
-        "13": "GND",
-        "14": "SW2_BUCK2",
-        "15": "VSYS",
-        "16": "GND",
-        "17": "PMIC_SHPHLD",
-        "18": "VDD_1V8",
-        "19": "I2C2_PMIC_SDA_P0.23",
-        "20": "I2C2_PMIC_SCL_P0.24",
-        "21": "PMIC_INT_P1.05",
-        "22": "",
+        "1": "VDD_1V8",
+        "2": "GND",
+        "3": "SW1_BUCK1",
+        "4": "VSYS",
+        "5": "SW2_BUCK2",
+        "6": "GND",
+        "7": "PMIC_INT_P1.05",
+        "8": "",
+        "9": "",
+        "10": "",
+        "11": "",
+        "12": "VDD_1V8",
+        "13": "I2C2_PMIC_SDA_P0.23",
+        "14": "I2C2_PMIC_SCL_P0.24",
+        "15": "PMIC_SHPHLD",
+        "16": "PMIC_VSET2",
+        "17": "PMIC_VSET1",
+        "18": "PMIC_NTC",
+        "19": "VBAT",
+        "20": "VSYS",
+        "21": "VBUS_5V",
+        "22": "VBUS_5V",
         "23": "",
         "24": "",
         "25": "",
         "26": "",
         "27": "",
         "28": "",
-        "29": "VDD_1V8",
-        "30": "VDD_3V0",
-        "31": "VSYS",
-        "32": "VBAT",
+        "29": "",
+        "30": "",
+        "31": "",
+        "32": "VDD_3V0",
     }
     # U3: ICM-42688-P LGA-14 (Exact TDK DS-000347 Table 11 Pinout)
     #   1=SDO/AD0(SPI4_MISO), 2=NC, 3=NC, 4=INT1, 5=VDDIO, 6=GND, 7=RESV(GND),
@@ -789,8 +800,8 @@ def build_placements() -> list[ComponentPlacement]:
             footprint="HKS:Johanson_2450AT18B100",
             pkg_w_mm=3.2,
             pkg_l_mm=1.6,
-            xs_mm=15.0,
-            ys_mm=8.3,
+            xs_mm=17.8,
+            ys_mm=8.5,
             rot_deg=0.0,
             layer="F.Cu",
             dnp=False,
@@ -800,7 +811,7 @@ def build_placements() -> list[ComponentPlacement]:
                 ("1", -1.3, 0.0, 0.8, 1.4, "RF_ANT_FEED"),
                 ("2", 1.3, 0.0, 0.8, 1.4, ""),
             ),
-            notes="2.4 GHz BLE 5.3 ceramic chip antenna at GND keepout boundary (Pad 1=50R Feed 1.0mm inside keepout, Pad 2=Isolated Mechanical Anchor NC)",
+            notes="2.4 GHz BLE 5.3 ceramic chip antenna flush at +X_S top board edge (0.40 mm from edge, Pad 1=50R Feed, Pad 2=Isolated Mechanical Anchor NC)",
         ),
         ComponentPlacement(
             refdes="Y1",
@@ -1035,15 +1046,15 @@ def build_placements() -> list[ComponentPlacement]:
             footprint="HKS:C_0402_1005Metric",
             pkg_w_mm=1.0,
             pkg_l_mm=0.5,
-            xs_mm=9.5,
-            ys_mm=1.5,
+            xs_mm=17.8,
+            ys_mm=3.7,
             rot_deg=0.0,
             layer="F.Cu",
             dnp=False,
             category="Capacitor",
             rail="RF_50R",
             pads=_two_pad("RF_ANT_OUT", "RF_MATCH_MID", pitch=0.9, pw=0.5, ph=0.5),
-            notes="C_RF1: 1.2 pF series RF DC-block/matching capacitor 1.3 mm from U1 Ball L31 ANT",
+            notes="C_RF1: 1.2 pF series RF DC-block/matching capacitor grouped directly beside L5 & L6 at antenna feed point (T-M3)",
         ),
         ComponentPlacement(
             refdes="C28",
@@ -1053,15 +1064,15 @@ def build_placements() -> list[ComponentPlacement]:
             footprint="HKS:C_0402_1005Metric",
             pkg_w_mm=1.0,
             pkg_l_mm=0.5,
-            xs_mm=8.3,
-            ys_mm=1.5,
+            xs_mm=15.0,
+            ys_mm=3.7,
             rot_deg=0.0,
             layer="F.Cu",
             dnp=True,
             category="Capacitor",
             rail="RF_50R",
-            pads=_two_pad("RF_ANT_OUT", "GND", pitch=0.9, pw=0.5, ph=0.5),
-            notes="C_RF2: Nordic reference shunt harmonic-filter / pi-tuning pad right at U1 Ball L31 ANT exit (DNI until VNA enclosure tune)",
+            pads=_two_pad("GND", "RF_ANT_OUT", pitch=0.9, pw=0.5, ph=0.5),
+            notes="C_RF2: Nordic reference shunt harmonic-filter / pi-tuning pad grouped at C27/L5/L6 feed network (DNI until VNA enclosure tune)",
         ),
         ComponentPlacement(
             refdes="L5",
@@ -1071,18 +1082,18 @@ def build_placements() -> list[ComponentPlacement]:
             footprint="HKS:L_0402_1005Metric_Vert",
             pkg_w_mm=0.5,
             pkg_l_mm=1.0,
-            xs_mm=13.8,
-            ys_mm=5.2,
+            xs_mm=16.5,
+            ys_mm=4.7,
             rot_deg=0.0,
             layer="F.Cu",
             dnp=False,
             category="Inductor",
             rail="RF_50R",
             pads=(
-                ("1", 0.0, 0.45, 0.5, 0.5, "RF_MATCH_MID"),
-                ("2", 0.0, -0.45, 0.5, 0.5, "GND"),
+                ("1", 0.0, -0.45, 0.5, 0.5, "RF_MATCH_MID"),
+                ("2", 0.0, 0.45, 0.5, 0.5, "GND"),
             ),
-            notes="2.7 nH shunt RF matching inductor at GND plane edge before 8x8mm keepout",
+            notes="2.7 nH shunt RF matching inductor grouped right between C27 Pad 2 and L6 Pad 1 (0.25 mm lumped node)",
         ),
         ComponentPlacement(
             refdes="L6",
@@ -1092,15 +1103,15 @@ def build_placements() -> list[ComponentPlacement]:
             footprint="HKS:L_0402_1005Metric",
             pkg_w_mm=1.0,
             pkg_l_mm=0.5,
-            xs_mm=15.0,
-            ys_mm=5.2,
+            xs_mm=17.8,
+            ys_mm=5.7,
             rot_deg=0.0,
             layer="F.Cu",
             dnp=False,
             category="Inductor",
             rail="RF_50R",
             pads=_two_pad("RF_MATCH_MID", "RF_ANT_FEED", pitch=0.9, pw=0.5, ph=0.5),
-            notes="3.3 nH series RF matching inductor at keepout boundary (x=135.2 -> 137.0 A1 Pad 1, only 1.0 mm over void)",
+            notes="3.3 nH series RF matching inductor at keepout boundary feeding A1 Pad 1 at top board edge (T-M3 & T-M4)",
         ),
         ComponentPlacement(
             refdes="RT1",
@@ -1272,7 +1283,7 @@ def build_placements() -> list[ComponentPlacement]:
         ("MH1", 16.8, -11.8),
         ("MH2", -16.8, -11.8),
         ("MH3", -16.8, 11.8),
-        ("MH4", 16.8, 4.5),
+        ("MH4", 12.2, 5.2),
     ]
     for mh_ref, mhx_s, mhy_s in mh_specs:
         comps.append(
@@ -1858,16 +1869,17 @@ def write_kicad_pcb(path: Path, comps: list[ComponentPlacement]) -> None:
     dcc_id = NET_TO_ID["NRF_DCC"]
     decr_id = NET_TO_ID["DECR"]
     lines.extend([
-        # RF_ANT_OUT: U1 Ball L31 (129.700, 90.500) -> C27 Pad 1 (131.050, 90.500) & C28 Pad 1 (131.050, 91.700) [1.35 mm on F.Cu]
-        f'  (segment (start 129.700 90.500) (end 131.050 90.500) (width 0.200) (layer "F.Cu") (net {rf_out_id}) (uuid "{_det_uuid("rf_seg_1")}"))',
-        f'  (segment (start 131.050 90.500) (end 131.050 91.700) (width 0.200) (layer "F.Cu") (net {rf_out_id}) (uuid "{_det_uuid("rf_seg_1b")}"))',
-        # RF_MATCH_MID: C27 Pad 2 (131.950, 90.500) -> (134.750, 90.500) -> L5 Pad 1 (135.200, 86.650) & L6 Pad 1 (134.750, 85.000)
-        f'  (segment (start 131.950 90.500) (end 134.750 90.500) (width 0.200) (layer "F.Cu") (net {rf_mid_id}) (uuid "{_det_uuid("rf_seg_2")}"))',
-        f'  (segment (start 134.750 90.500) (end 134.750 86.650) (width 0.200) (layer "F.Cu") (net {rf_mid_id}) (uuid "{_det_uuid("rf_seg_3")}"))',
-        f'  (segment (start 134.750 86.650) (end 135.200 86.650) (width 0.200) (layer "F.Cu") (net {rf_mid_id}) (uuid "{_det_uuid("rf_seg_4")}"))',
-        f'  (segment (start 134.750 86.650) (end 134.750 85.000) (width 0.200) (layer "F.Cu") (net {rf_mid_id}) (uuid "{_det_uuid("rf_seg_4b")}"))',
-        # RF_ANT_FEED: L6 Pad 2 (135.650, 85.000) -> A1 Pad 1 (137.000, 85.000) [only 1.0 mm inside the x>=136.0 keepout!]
-        f'  (segment (start 135.650 85.000) (end 137.000 85.000) (width 0.200) (layer "F.Cu") (net {rf_feed_id}) (uuid "{_det_uuid("rf_seg_5")}"))',
+        # RF_ANT_OUT: U1 Ball L31 (129.700, 90.500) -> (134.150, 90.500) -> C28 Pad 2 (134.150, 85.000) -> (134.150, 82.800) -> (133.250, 82.800) -> C27 Pad 1 (133.250, 82.200)
+        f'  (segment (start 129.700 90.500) (end 134.150 90.500) (width 0.200) (layer "F.Cu") (net {rf_out_id}) (uuid "{_det_uuid("rf_seg_1")}"))',
+        f'  (segment (start 134.150 90.500) (end 134.150 85.000) (width 0.200) (layer "F.Cu") (net {rf_out_id}) (uuid "{_det_uuid("rf_seg_1b")}"))',
+        f'  (segment (start 134.150 85.000) (end 134.150 82.800) (width 0.200) (layer "F.Cu") (net {rf_out_id}) (uuid "{_det_uuid("rf_seg_1c")}"))',
+        f'  (segment (start 134.150 82.800) (end 133.250 82.800) (width 0.200) (layer "F.Cu") (net {rf_out_id}) (uuid "{_det_uuid("rf_seg_1d")}"))',
+        f'  (segment (start 133.250 82.800) (end 133.250 82.200) (width 0.200) (layer "F.Cu") (net {rf_out_id}) (uuid "{_det_uuid("rf_seg_1e")}"))',
+        # RF_MATCH_MID: C27 Pad 2 (134.150, 82.200) -> L6 Pad 1 (135.250, 82.200) & L5 Pad 1 (134.700, 83.050) [1.10 mm compact lumped Tee node!]
+        f'  (segment (start 134.150 82.200) (end 135.250 82.200) (width 0.200) (layer "F.Cu") (net {rf_mid_id}) (uuid "{_det_uuid("rf_seg_2")}"))',
+        f'  (segment (start 134.700 82.200) (end 134.700 83.050) (width 0.200) (layer "F.Cu") (net {rf_mid_id}) (uuid "{_det_uuid("rf_seg_3")}"))',
+        # RF_ANT_FEED: L6 Pad 2 (136.150, 82.200) -> A1 Pad 1 (137.200, 82.200) [1.05 mm feed to A1 flush at top board edge y=82.20 mm!]
+        f'  (segment (start 136.150 82.200) (end 137.200 82.200) (width 0.200) (layer "F.Cu") (net {rf_feed_id}) (uuid "{_det_uuid("rf_seg_5")}"))',
         # Short F.Cu DCDC switching loop 1: U1 Ball B10 DCCD (125.300, 88.700) -> L3 Pad 1 (124.250, 87.000), L3 Pad 2 (125.750, 87.000) -> U1 Ball A15 DECD (126.300, 88.300) & C24 Pad 1 (124.250, 85.500)
         f'  (segment (start 125.300 88.700) (end 125.300 87.600) (width 0.150) (layer "F.Cu") (net {dccd_id}) (uuid "{_det_uuid("dcdc_seg_1")}"))',
         f'  (segment (start 125.300 87.600) (end 124.250 87.000) (width 0.150) (layer "F.Cu") (net {dccd_id}) (uuid "{_det_uuid("dcdc_seg_2")}"))',
@@ -1883,12 +1895,13 @@ def write_kicad_pcb(path: Path, comps: list[ComponentPlacement]) -> None:
         f'  (segment (start 128.700 85.750) (end 128.750 85.500) (width 0.150) (layer "F.Cu") (net {decr_id}) (uuid "{_det_uuid("dcdc_seg_7")}"))',
     ])
 
-    # 6. Pre-escape all connected U1 inner staggered balls (B2..B30, AK2..AK24, P2..AH2) so no F.Cu trace ever squeezes through the 0.20mm outer-row ball gap!
+    # 6. Pre-escape all connected U1 inner staggered balls (B2..B30, AK2..AK24, P2..AH2) + outer VDD_1V8 balls so no F.Cu trace ever squeezes through the 0.20mm outer-row ball gap!
+    #    (Note: U1 GND balls A25, AG31, B12, B26, D2, F2, G1, H2, J31, K2, T2 are connected post-route by _place_post_route_gnd_vias + F.Cu/In1.Cu/B.Cu GND pours so they don't add fixed-via obstacles in DSN)
     u1_comp = next(c for c in comps if c.refdes == "U1")
     u1x = u1_comp.kicad_x_mm
     u1y = u1_comp.kicad_y_mm
     u1_inner_vias: dict[str, list[tuple[float, float]]] = {
-        # Top inner row: B2, B4, B28, B30 escape outward-diagonal (clearing A5 at x=-2.20 and A27 at x=+2.20); B6, B8 escape inward; A13 escapes outward-top-left to (-0.60, -3.70)
+        # Top inner row: B2, B4, B28, B30 escape outward-diagonal (clearing A5 at x=-2.20 and A27 at x=+2.20); B6, B8 escape inward; A13 escapes outward-top; T2 escapes inward-left to (-2.25, -0.90)
         "A13": [(round(u1x - 0.60, 3), round(u1y - 3.70, 3))],
         "B2": [(round(u1x - 3.25, 3), round(u1y - 3.35, 3))],
         "B4": [(round(u1x - 2.65, 3), round(u1y - 3.45, 3))],
@@ -1898,7 +1911,7 @@ def write_kicad_pcb(path: Path, comps: list[ComponentPlacement]) -> None:
         "B30": [(round(u1x + 3.20, 3), round(u1y - 3.35, 3))],
         # Left inner column (dx = -2.80): P2..AH2 escape inward in +X
         "P2": [(round(u1x - 2.25, 3), round(u1y - 0.40, 3))],
-        "V2": [(round(u1x - 2.45, 3), round(u1y + 0.08, 3)), (round(u1x - 1.55, 3), round(u1y + 0.08, 3))],
+        "V2": [(round(u1x - 2.38, 3), round(u1y + 0.14, 3)), (round(u1x - 1.55, 3), round(u1y + 0.14, 3))],
         "Y2": [(round(u1x - 2.25, 3), round(u1y + 0.47, 3))],
         "AB2": [(round(u1x - 2.45, 3), round(u1y + 0.86, 3)), (round(u1x - 1.55, 3), round(u1y + 0.86, 3))],
         "AD2": [(round(u1x - 2.25, 3), round(u1y + 1.25, 3))],
