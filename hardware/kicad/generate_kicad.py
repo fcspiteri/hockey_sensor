@@ -2043,32 +2043,108 @@ def write_kicad_netlist(path: Path, comps: list[ComponentPlacement]) -> None:
 def write_pcba_production_files(prod_dir: Path, comps: list[ComponentPlacement]) -> None:
     prod_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Turnkey PCBA BOM CSV (grouped by MPN + Value + Footprint; excludes Mechanical NPTH mounting holes)
-    bom_groups: dict[tuple[str, str, str, str, bool, str, str], list[str]] = {}
+    # High-stock production MPN & JLCPCB/LCSC mapping table (resolves 01005 auto-match issue, passive line splitting, and LCSC shortages)
+    # Keyed by refdes -> (clean_comment, clean_pkg, prod_mpn, prod_mfg, jlcpcb_lcsc, alt_mpns, force_dnp)
+    PROD_OVERRIDES: dict[str, tuple[str, str, str, str, str, str, bool]] = {
+        "U1": ("nRF5340-QKAA-R7", "AQFN-94-7x7", "nRF5340-QKAA-R7", "Nordic Semiconductor", "C3606967", "nRF5340-QKAA", False),
+        "U2": ("nPM1300-QEAA-R", "QFN-32-5x5", "nPM1300-QEAA-R", "Nordic Semiconductor", "C7466043", "nPM1300-QEAA-R7 (DigiKey/Mouser Global Sourcing)", False),
+        "U3": ("ICM-42688-P", "LGA-14-2.5x3", "ICM-42688-P", "TDK InvenSense", "C1850418", "ICM-42688-V", False),
+        "U4": ("ADXL372BCCZ-RL7", "LGA-16-3x3.25", "ADXL372BCCZ-RL7", "Analog Devices", "C579465", "ADXL372BCCZ", False),
+        "U5": ("MMC5983MA", "LGA-16-3x3", "MMC5983MA", "MEMSIC", "C404329", "MMC5983MA-B", False),
+        "U6": ("BMP390 / BMP581", "LGA-10-2x2", "BMP390", "Bosch Sensortec", "C2683569", "BMP581 (C5362283), BMP388 (C388966), BMP585", False),
+        "U7": ("W25N01GVZEIG", "WSON-8-8x6", "W25N01GVZEIG", "Winbond", "C519234", "GD5F1GQ5REYIGR (C2843429), MT29F1G01ABBFDWB-IT:F (C428301), W25N01JWZEIG (C17584941)", False),
+        "U8": ("PCA9306DCUR", "VSSOP-8", "PCA9306DCUR", "Texas Instruments", "C33196", "PCA9306DCT", False),
+        "U9": ("SN74AXC1T45DRLR", "SOT-563", "SN74AXC1T45DRLR", "Texas Instruments", "C191003", "74AXC1T45", False),
+        "U10": ("TPD4E05U06DQAR", "USON-10-2.5x1", "TPD4E05U06DQAR", "Texas Instruments", "C136675", "TPD4E05U06DQAR (C22390021), USBLC6-2SC6", False),
+        "J1": ("USB4105-GF-A", "USB-C-16P-SMD", "USB4105-GF-A", "GCT", "C2765186", "TYPE-C-31-M-12 (C165948 Basic), USB4720-03-A (C22468847)", False),
+        "J2": ("TC2050-IDC-NL", "Tag-Connect-10P", "TC2050-IDC-NL", "Tag-Connect", "", "DNP Bare PCB Footprint Only", True),
+        "A1": ("2.45GHz_Chip_Antenna_1206", "1206", "RFANT3216120A5T", "Walsin", "C72009", "AN3216-245 (C19198), 2450AT18B100E (C89416), ANT3216LL00R2400A (C165031), 2450AT18B0100001E (C6055600)", False),
+        "Y1": ("32MHz_2016_Crystal", "SMD2016-4P", "NX2016SA-32MHZ-STD-CZS-5", "NDK", "C843260", "X201632MSB4SI (C404041), ECS-320-8-36B-CKM", False),
+        "Y2": ("32.768kHz_2012_Crystal", "SMD-2012-2P", "FC-12M 32.7680KA-A3", "Epson", "C32346", "X201232768KGD2SI (C255966), SC-20S-32.768KHZ-20PPM-12.5PF", False),
+        "SW1": ("Tactile_Switch_3x2x0.6mm", "SMD-3x2mm", "SKRPABE010", "Alps Alpine", "C115357", "EVPAAC02A (C241517), EVPAWCD4A (C2845001)", False),
+        "D1": ("ESD5Z5.0T1G", "SOD-523", "ESD5Z5.0T1G", "onsemi", "C82044", "LESD5Z5.0T1G (C383214)", False),
+        "D2": ("BAT54WS", "SOD-323", "BAT54WS", "Diodes Incorporated", "C2128", "BAT54WS-7-F (C7502694)", False),
+        "Q1": ("NTZD3154NT1G", "SOT-563", "NTZD3154NT1G", "onsemi", "C142317", "NTZD3154NT1G (C2940619)", False),
+        "LD1": ("LTST-C191KGKT_Green", "0603", "LTST-C191KGKT", "Lite-On", "C125098", "19-217/GHC-YR1S2/3T (C72043 Basic)", False),
+        "LD2": ("LTST-C191KRKT_Red", "0603", "LTST-C191KRKT", "Lite-On", "C125099", "KT-0603R (C2286 Basic)", False),
+        "L1": ("2.2uH_2016_Power_Inductor", "2016", "LQM2MPN2R2MG0L", "Murata", "C86058", "MPH201610S2R2MT (C104856), VLS201610HBX-2R2M-1 (C403018), DFE201610E-2R2M=P2 (C167247)", False),
+        "L2": ("2.2uH_2016_Power_Inductor", "2016", "LQM2MPN2R2MG0L", "Murata", "C86058", "MPH201610S2R2MT (C104856), VLS201610HBX-2R2M-1 (C403018), DFE201610E-2R2M=P2 (C167247)", False),
+        "L3": ("10uH_0603_DCDC_Inductor", "0603", "MLZ1608M100WT000", "TDK", "C141418", "CB1608T100M (C76793), LQM18FN100M00D (C86080), LQM18DN100M70L", False),
+        "L4": ("10uH_0603_DCDC_Inductor", "0603", "MLZ1608M100WT000", "TDK", "C141418", "CB1608T100M (C76793), LQM18FN100M00D (C86080), LQM18DN100M70L", False),
+        "L5": ("2.7nH_0402_RF_Inductor", "0402", "LQG15HS2N7S02D", "Murata", "C16779", "SDCL1005C2N7STDF (C27125 Basic), LQW15AN2N7C00D", False),
+        "L6": ("3.3nH_0402_RF_Inductor", "0402", "LQG15HS3N3S02D", "Murata", "C14718", "SDCL1005C3N3STDF (C27126 Basic), LQW15AN3N3C00D", False),
+        "C19": ("4.7uF_25V_X5R_0603", "0603", "CL10A475KA8NNNC", "Samsung", "C1779", "GRM188R61E475KE11D (C90057)", False),
+        "C20": ("10uF_10V_X5R_0603", "0603", "CL10A106KP8NNNC", "Samsung", "C19702", "GRM188R61A106KE69D (C86197), GRM188R60J106ME47D", False),
+        "C21": ("10uF_10V_X5R_0603", "0603", "CL10A106KP8NNNC", "Samsung", "C19702", "GRM188R61A106KE69D (C86197), GRM188R60J106ME47D", False),
+        "C22": ("4.7uF_16V_X5R_0603", "0603", "CL10A475KO8NNNC", "Samsung", "C19666", "GRM188R61C475KAAJD (C29823), GRM188R61A475KE15D", False),
+        "C23": ("4.7uF_16V_X5R_0603", "0603", "CL10A475KO8NNNC", "Samsung", "C19666", "GRM188R61C475KAAJD (C29823), GRM188R61A475KE15D", False),
+        "C24": ("4.7uF_16V_X5R_0603", "0603", "CL10A475KO8NNNC", "Samsung", "C19666", "GRM188R61C475KAAJD (C29823), GRM188R61A475KE15D", False),
+        "C25": ("4.7uF_16V_X5R_0603", "0603", "CL10A475KO8NNNC", "Samsung", "C19666", "GRM188R61C475KAAJD (C29823), GRM188R61A475KE15D", False),
+        "C26": ("4.7uF_16V_X5R_0603", "0603", "CL10A475KO8NNNC", "Samsung", "C19666", "GRM188R61C475KAAJD (C29823), GRM188R61A475KE15D", False),
+        "C27": ("1.2pF_50V_C0G_0402", "0402", "GRM1555C1H1R2WA01D", "Murata", "C24663", "GJM1555C1H1R2BB01D (C86561), CL05C1R2BB5NNNC (C13571), GJM1555C1H1R2WB01D", False),
+        "C28": ("0.8pF_50V_C0G_0402_DNP", "0402", "GRM1555C1HR80WA01D", "Murata", "C85589", "GJM1555C1HR80BB01D (C192055), GJM1555C1HR80WB01D", True),
+        "RT1": ("10k_NTC_0402_DNP", "0402", "NCP15XH103F03RC", "Murata", "C13564", "ERT-J0EG103FA", True),
+        "BT1": ("502535-450mAh-LiPo-Pads", "Battery_Pads_3Pin", "502535-450mAh-LiPo", "Generic-LiPo", "", "DNP Bare PCB Wire-Solder Pads for Off-Board LiPo Cell", True),
+        "R1": ("47k_1%_0402", "0402", "RC0402FR-0747KL", "Yageo", "C25792", "0402WGF4702TCE (C25792 Basic), ERJ-2RKF4702X", False),
+        "R2": ("150k_1%_0402", "0402", "RC0402FR-07150KL", "Yageo", "C25756", "0402WGF1503TCE (C25756 Basic), ERJ-2RKF1503X", False),
+        "R3": ("5.1k_1%_0402", "0402", "RC0402FR-075K1L", "Yageo", "C25905", "0402WGF5101TCE (C25905 Basic), ERJ-2RKF5101X", False),
+        "R4": ("5.1k_1%_0402", "0402", "RC0402FR-075K1L", "Yageo", "C25905", "0402WGF5101TCE (C25905 Basic), ERJ-2RKF5101X", False),
+        "R5": ("4.7k_1%_0402", "0402", "RC0402FR-074K7L", "Yageo", "C25900", "0402WGF4701TCE (C25900 Basic), ERJ-2GEJ472X", False),
+        "R6": ("4.7k_1%_0402", "0402", "RC0402FR-074K7L", "Yageo", "C25900", "0402WGF4701TCE (C25900 Basic), ERJ-2GEJ472X", False),
+        "R7": ("4.7k_1%_0402", "0402", "RC0402FR-074K7L", "Yageo", "C25900", "0402WGF4701TCE (C25900 Basic), ERJ-2GEJ472X", False),
+        "R8": ("4.7k_1%_0402", "0402", "RC0402FR-074K7L", "Yageo", "C25900", "0402WGF4701TCE (C25900 Basic), ERJ-2GEJ472X", False),
+        "R15": ("4.7k_1%_0402", "0402", "RC0402FR-074K7L", "Yageo", "C25900", "0402WGF4701TCE (C25900 Basic), ERJ-2GEJ472X", False),
+        "R16": ("4.7k_1%_0402", "0402", "RC0402FR-074K7L", "Yageo", "C25900", "0402WGF4701TCE (C25900 Basic), ERJ-2GEJ472X", False),
+        "R9": ("10k_1%_0402", "0402", "RC0402FR-0710KL", "Yageo", "C25744", "0402WGF1002TCE (C25744 Basic), ERJ-2GEJ103X", False),
+        "R10": ("10k_1%_0402", "0402", "RC0402FR-0710KL", "Yageo", "C25744", "0402WGF1002TCE (C25744 Basic), ERJ-2GEJ103X", False),
+        "R11": ("10k_1%_0402", "0402", "RC0402FR-0710KL", "Yageo", "C25744", "0402WGF1002TCE (C25744 Basic), ERJ-2GEJ103X", False),
+        "R12": ("100k_1%_0402", "0402", "RC0402FR-07100KL", "Yageo", "C25741", "0402WGF1003TCE (C25741 Basic), ERJ-2GEJ104X", False),
+        "R13": ("100k_1%_0402", "0402", "RC0402FR-07100KL", "Yageo", "C25741", "0402WGF1003TCE (C25741 Basic), ERJ-2GEJ104X", False),
+        "R14": ("100k_1%_0402", "0402", "RC0402FR-07100KL", "Yageo", "C25741", "0402WGF1003TCE (C25741 Basic), ERJ-2GEJ104X", False),
+        "R17": ("200k_1%_0402", "0402", "RC0402FR-07200KL", "Yageo", "C25764", "0402WGF2003TCE (C25764 Basic), ERJ-2GEJ204X", False),
+        "R18": ("1k_1%_0402", "0402", "RC0402FR-071KL", "Yageo", "C11702", "0402WGF1001TCE (C11702 Basic), ERJ-2GEJ102X", False),
+        "R19": ("1k_1%_0402", "0402", "RC0402FR-071KL", "Yageo", "C11702", "0402WGF1001TCE (C11702 Basic), ERJ-2GEJ102X", False),
+    }
+    for i_c in range(1, 19):
+        PROD_OVERRIDES[f"C{i_c}"] = (
+            "100nF_16V_X7R_0402",
+            "0402",
+            "CL05B104KO5NNNC",
+            "Samsung",
+            "C1525",
+            "GRM155R71C104KA88D (C357710), CC0402KRX7R7BB104 (C77024), GRM155R61A104KA01D",
+            False,
+        )
+
+    # 1. Turnkey PCBA BOM CSV (grouped strictly by unique MPN so zero duplicate-part warnings occur in JLCPCB/PCBWay)
+    bom_groups: dict[tuple[str, str, str, str, str, str, bool], list[str]] = {}
     for c in comps:
         if c.category == "Mechanical":
             continue
-        key = (c.value, c.footprint, c.mpn, c.manufacturer, c.dnp, c.rail, c.notes)
-        bom_groups.setdefault(key, []).append(c.refdes)
+        ov = PROD_OVERRIDES.get(
+            c.refdes,
+            (c.value, c.footprint.split(":")[-1], c.mpn, c.manufacturer, "", "", c.dnp),
+        )
+        bom_groups.setdefault(ov, []).append(c.refdes)
 
     bom_path = prod_dir / "hockey_sensor_pcba_bom.csv"
     with bom_path.open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["Comment", "Designator", "Footprint", "MPN", "Manufacturer", "Quantity", "DNP", "Rail", "Notes"])
-        for (val, fp, mpn, mfg, dnp, rail, notes), refs in bom_groups.items():
-            w.writerow([val, ",".join(refs), fp, mpn, mfg, len(refs), "DNP" if dnp else "", rail, notes])
+        w.writerow(["Comment", "Designator", "Footprint", "JLCPCB Part #", "MPN", "Manufacturer", "Quantity", "DNP", "Alternate_MPNs"])
+        for (val, fp, mpn, mfg, lcsc, alts, dnp), refs in bom_groups.items():
+            w.writerow([val, ",".join(refs), fp, lcsc, mpn, mfg, len(refs), "DNP" if dnp else "", alts])
 
-    # 1b. Populated-only PCBA BOM CSV (excludes DNP items J2, C28, RT1 for portals that do not parse the DNP column)
+    # 1b. Populated-only PCBA BOM CSV (excludes DNP items J2, C28, RT1, BT1 for turnkey SMT portals)
     bom_pop_path = prod_dir / "hockey_sensor_pcba_bom_populated_only.csv"
     with bom_pop_path.open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["Comment", "Designator", "Footprint", "MPN", "Manufacturer", "Quantity", "DNP", "Rail", "Notes"])
-        for (val, fp, mpn, mfg, dnp, rail, notes), refs in bom_groups.items():
+        w.writerow(["Comment", "Designator", "Footprint", "JLCPCB Part #", "MPN", "Manufacturer", "Quantity", "DNP", "Alternate_MPNs"])
+        for (val, fp, mpn, mfg, lcsc, alts, dnp), refs in bom_groups.items():
             if dnp:
                 continue
-            w.writerow([val, ",".join(refs), fp, mpn, mfg, len(refs), "", rail, notes])
+            w.writerow([val, ",".join(refs), fp, lcsc, mpn, mfg, len(refs), "", alts])
 
-    # 2. Centroid Pick-and-Place (CPL / .pos CSV) — includes all 76 non-Mechanical BOM designators (including J2, C28, RT1) for 100% 1-to-1 BOM<->CPL parity
+    # 2. Centroid Pick-and-Place (CPL / .pos CSV) — includes all 76 non-Mechanical BOM designators (including J2, C28, RT1, BT1) for 100% 1-to-1 parity with hockey_sensor_pcba_bom.csv
     cpl_path = prod_dir / "hockey_sensor_cpl_pick_and_place.csv"
     with cpl_path.open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
@@ -2076,10 +2152,14 @@ def write_pcba_production_files(prod_dir: Path, comps: list[ComponentPlacement])
         for c in comps:
             if c.category == "Mechanical":
                 continue
+            ov = PROD_OVERRIDES.get(
+                c.refdes,
+                (c.value, c.footprint.split(":")[-1], c.mpn, c.manufacturer, "", "", c.dnp),
+            )
             w.writerow([
                 c.refdes,
-                c.value,
-                c.footprint.split(":")[-1],
+                ov[0],
+                ov[1],
                 f"{c.kicad_x_mm:.3f}",
                 f"{c.kicad_y_mm:.3f}",
                 f"{c.xs_mm:+.3f}",
@@ -2088,18 +2168,24 @@ def write_pcba_production_files(prod_dir: Path, comps: list[ComponentPlacement])
                 "top" if c.layer == "F.Cu" else "bottom",
             ])
 
-    # 2b. Populated-only CPL CSV (excludes DNP items J2, C28, RT1 to pair with hockey_sensor_pcba_bom_populated_only.csv)
+    # 2b. Populated-only CPL CSV (excludes DNP items J2, C28, RT1, BT1 to pair 1-to-1 with hockey_sensor_pcba_bom_populated_only.csv)
     cpl_pop_path = prod_dir / "hockey_sensor_cpl_populated_only.csv"
     with cpl_pop_path.open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["Designator", "Val", "Package", "Mid X (mm)", "Mid Y (mm)", "Frame_S_X (mm)", "Frame_S_Y (mm)", "Rotation", "Layer"])
         for c in comps:
-            if c.dnp:
+            if c.category == "Mechanical":
+                continue
+            ov = PROD_OVERRIDES.get(
+                c.refdes,
+                (c.value, c.footprint.split(":")[-1], c.mpn, c.manufacturer, "", "", c.dnp),
+            )
+            if ov[6]:
                 continue
             w.writerow([
                 c.refdes,
-                c.value,
-                c.footprint.split(":")[-1],
+                ov[0],
+                ov[1],
                 f"{c.kicad_x_mm:.3f}",
                 f"{c.kicad_y_mm:.3f}",
                 f"{c.xs_mm:+.3f}",
